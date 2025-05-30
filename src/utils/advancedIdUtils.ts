@@ -4,6 +4,11 @@
  * Bulletproof data management with zero data loss
  */
 
+// Type augmentation for experimental Navigator properties
+interface ExtendedNavigator extends Navigator {
+  deviceMemory?: number;
+}
+
 // Device fingerprinting for unique device identification
 export const generateDeviceFingerprint = (): string => {
   const canvas = document.createElement('canvas');
@@ -13,6 +18,8 @@ export const generateDeviceFingerprint = (): string => {
     ctx.font = '14px Arial';
     ctx.fillText('Device fingerprint', 2, 2);
   }
+  
+  const extendedNavigator = navigator as ExtendedNavigator;
   
   const fingerprint = [
     navigator.userAgent,
@@ -24,7 +31,7 @@ export const generateDeviceFingerprint = (): string => {
     navigator.cookieEnabled,
     canvas.toDataURL(),
     navigator.hardwareConcurrency || 0,
-    navigator.deviceMemory || 0
+    extendedNavigator.deviceMemory || 0
   ].join('|');
   
   return btoa(fingerprint).slice(0, 16);
