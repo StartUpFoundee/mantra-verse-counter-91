@@ -15,6 +15,9 @@ import {
   STORES
 } from './indexedDBUtils';
 
+// Import advanced utilities
+import { safeEncode, safeDecode } from './advancedIdUtils';
+
 /**
  * Generate a data-embedded spiritual ID that contains all user information
  */
@@ -51,9 +54,13 @@ export const generateDataEmbeddedID = async (userData: any): Promise<string> => 
       version: "2.0" // Mark as new format
     };
 
-    // Compress and encode
+    // Compress and encode using safe encoding
     const compressed = LZString.compress(JSON.stringify(embeddedData));
-    const encodedID = btoa(compressed).replace(/[+/=]/g, (match) => {
+    if (!compressed) {
+      throw new Error("Compression failed");
+    }
+    
+    const encodedID = safeEncode(compressed).replace(/[+/=]/g, (match) => {
       return { '+': '-', '/': '_', '=': '' }[match] || match;
     });
     
@@ -82,7 +89,7 @@ export const decodeEmbeddedID = (embeddedId: string): any | null => {
     // Add padding if needed
     const paddedData = base64Data + '='.repeat((4 - base64Data.length % 4) % 4);
     
-    const compressed = atob(paddedData);
+    const compressed = safeDecode(paddedData);
     const jsonString = LZString.decompress(compressed);
     
     if (!jsonString) {

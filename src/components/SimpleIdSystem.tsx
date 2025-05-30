@@ -3,10 +3,12 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Download, Upload, RefreshCw, CheckCircle } from "lucide-react";
+import { Copy, Download, Upload, RefreshCw, CheckCircle, Settings } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
-import { getUserData, saveUserData, generateDataEmbeddedID, importAccountFromID } from "@/utils/spiritualIdUtils";
+import { getUserData, saveUserData, importAccountFromID } from "@/utils/spiritualIdUtils";
+import { AccountManager, DataPersistenceManager } from "@/utils/advancedIdUtils";
 import ModernCard from "./ModernCard";
+import AdvancedAccountManager from "./AdvancedAccountManager";
 
 const SimpleIdSystem: React.FC = () => {
   const [userID, setUserID] = useState<string>("");
@@ -16,15 +18,37 @@ const SimpleIdSystem: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isImporting, setIsImporting] = useState<boolean>(false);
   const [showImport, setShowImport] = useState<boolean>(false);
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
 
   useEffect(() => {
-    const userData = getUserData();
-    if (userData) {
-      setUserID(userData.id || "");
-      setUserName(userData.name || "");
-      setIsLoggedIn(true);
-    }
+    checkUserStatus();
   }, []);
+
+  const checkUserStatus = async () => {
+    try {
+      // Check for traditional user data first
+      const userData = getUserData();
+      if (userData) {
+        setUserID(userData.id || "");
+        setUserName(userData.name || "");
+        setIsLoggedIn(true);
+        return;
+      }
+
+      // Check for new advanced account system
+      const accountManager = new AccountManager(1);
+      const accounts = await accountManager.getAllAccounts();
+      
+      if (accounts.length > 0) {
+        const currentAccount = accounts[0]; // Use first available account
+        setUserID(currentAccount.id);
+        setUserName(currentAccount.name);
+        setIsLoggedIn(true);
+      }
+    } catch (error) {
+      console.error('Error checking user status:', error);
+    }
+  };
 
   const handleCopyID = () => {
     navigator.clipboard.writeText(userID);
@@ -39,11 +63,13 @@ const SimpleIdSystem: React.FC = () => {
     const dataStr = JSON.stringify({
       id: userID,
       name: userName,
-      backup_data: userData
+      backup_data: userData,
+      export_timestamp: new Date().toISOString(),
+      version: "2.0"
     }, null, 2);
     
     const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
-    const exportFileDefaultName = `my-spiritual-id-${new Date().toISOString().split('T')[0]}.json`;
+    const exportFileDefaultName = `spiritual-id-${new Date().toISOString().split('T')[0]}.json`;
     
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
@@ -61,17 +87,24 @@ const SimpleIdSystem: React.FC = () => {
     try {
       const userData = getUserData();
       if (userData) {
-        const newID = await generateDataEmbeddedID(userData);
-        const updatedUserData = { ...userData, id: newID };
-        await saveUserData(updatedUserData);
-        setUserID(newID);
+        // For advanced accounts, use the new system
+        const accountManager = new AccountManager(1);
+        const persistenceManager = new DataPersistenceManager(1);
+        
+        // Update account data across all 8 layers
+        userData.lastLogin = new Date().toISOString();
+        await persistenceManager.storeData('account', userData);
         
         toast("ID Updated!", {
           description: "Your ID has been refreshed with latest data",
           icon: <RefreshCw className="h-4 w-4 text-green-500" />
         });
+
+        // Refresh the display
+        await checkUserStatus();
       }
     } catch (error) {
+      console.error('ID refresh error:', error);
       toast("Update Failed", {
         description: "Could not update your ID. Please try again."
       });
@@ -93,10 +126,7 @@ const SimpleIdSystem: React.FC = () => {
       const success = await importAccountFromID(importID.trim());
       
       if (success) {
-        const userData = getUserData();
-        setUserID(userData.id);
-        setUserName(userData.name);
-        setIsLoggedIn(true);
+        await checkUserStatus();
         setShowImport(false);
         setImportID("");
         
@@ -151,6 +181,23 @@ const SimpleIdSystem: React.FC = () => {
     reader.readAsText(file);
   };
 
+  // Show advanced account manager if requested
+  if (showAdvanced) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-4 flex justify-between items-center">
+          <Button
+            variant="outline"
+            onClick={() => setShowAdvanced(false)}
+          >
+            ← Back to Simple View
+          </Button>
+        </div>
+        <AdvancedAccountManager />
+      </div>
+    );
+  }
+
   if (!isLoggedIn) {
     return (
       <ModernCard className="p-6 lg:p-8 max-w-md mx-auto border-blue-200/50 dark:border-blue-700/50" gradient>
@@ -174,6 +221,15 @@ const SimpleIdSystem: React.FC = () => {
               className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
             >
               I Have an ID - Restore My Account
+            </Button>
+
+            <Button
+              onClick={() => setShowAdvanced(true)}
+              variant="outline"
+              className="w-full"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Advanced Account Manager
             </Button>
           </div>
         ) : (
@@ -280,12 +336,21 @@ const SimpleIdSystem: React.FC = () => {
           </Button>
         </div>
 
+        <Button
+          onClick={() => setShowAdvanced(true)}
+          variant="outline"
+          className="w-full"
+        >
+          <Settings className="h-4 w-4 mr-2" />
+          Advanced Account Manager
+        </Button>
+
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
           <p className="text-blue-700 dark:text-blue-300 text-sm font-medium mb-2">
             📱 Switch Devices?
           </p>
           <p className="text-blue-600 dark:text-blue-400 text-xs">
-            Copy your ID and paste it on your new device to restore all your spiritual progress!
+            Use the Advanced Account Manager for multi-device management with bulletproof 8-layer data persistence!
           </p>
         </div>
       </div>

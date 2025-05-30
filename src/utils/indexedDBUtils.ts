@@ -5,7 +5,7 @@
 
 // Database configuration
 const DB_NAME = "NaamJapaDB";
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Increased version to handle schema changes
 
 // Object store names
 const STORES = {
@@ -72,16 +72,18 @@ const initializeDB = (): Promise<IDBDatabase> => {
       }
       
       if (!db.objectStoreNames.contains(STORES.activityData)) {
-        db.createObjectStore(STORES.activityData, { keyPath: "date" });
+        // Fix the keyPath issue by using auto-incrementing keys
+        const activityStore = db.createObjectStore(STORES.activityData, { keyPath: "id", autoIncrement: true });
+        activityStore.createIndex("date", "date", { unique: false });
       }
     };
   });
 };
 
 /**
- * Store data in the specified object store
+ * Store data in the specified object store with proper key handling
  */
-const storeData = async (storeName: string, data: any, key?: string): Promise<void> => {
+const storeData = async (storeName: string, data: any, customKey?: string): Promise<void> => {
   try {
     const db = await initializeDB();
     
@@ -89,7 +91,15 @@ const storeData = async (storeName: string, data: any, key?: string): Promise<vo
       const transaction = db.transaction(storeName, "readwrite");
       const store = transaction.objectStore(storeName);
       
-      const request = key ? store.put(data, key) : store.put(data);
+      // Fix the key issue for activity data
+      if (storeName === STORES.activityData && !data.id) {
+        // For activity data, if no id exists, let it auto-increment
+        if (data.date && !data.id) {
+          data.id = `activity_${data.date}_${Date.now()}`;
+        }
+      }
+      
+      const request = customKey ? store.put({ ...data, id: customKey }) : store.put(data);
       
       request.onsuccess = () => {
         resolve();
@@ -107,8 +117,8 @@ const storeData = async (storeName: string, data: any, key?: string): Promise<vo
   } catch (error) {
     console.error("Failed to store data in IndexedDB:", error);
     // Fallback to localStorage if IndexedDB fails
-    if (key) {
-      localStorage.setItem(key, JSON.stringify(data));
+    if (customKey) {
+      localStorage.setItem(customKey, JSON.stringify(data));
     }
     throw error;
   }
