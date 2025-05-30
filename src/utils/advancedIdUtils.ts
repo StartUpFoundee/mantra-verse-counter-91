@@ -21,6 +21,25 @@ export interface QRAccountData {
   version: string;
 }
 
+// Add safe encoding/decoding functions
+export const safeEncode = (data: string): string => {
+  try {
+    return btoa(data);
+  } catch (error) {
+    console.error('Encoding error:', error);
+    return '';
+  }
+};
+
+export const safeDecode = (data: string): string => {
+  try {
+    return atob(data);
+  } catch (error) {
+    console.error('Decoding error:', error);
+    return '';
+  }
+};
+
 // Enhanced data persistence manager with cross-tab sync
 export class DataPersistenceManager {
   private slot: number;
@@ -76,20 +95,34 @@ export class DataPersistenceManager {
       const store = transaction.objectStore(this.storeName);
       
       const storeKey = `slot_${this.slot}_${key}`;
-      const result = await store.get(storeKey);
       
-      if (result) {
-        return result.data;
-      }
-      
-      // Fallback to localStorage
-      const stored = localStorage.getItem(storeKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return parsed.data;
-      }
-      
-      return null;
+      return new Promise((resolve, reject) => {
+        const request = store.get(storeKey);
+        request.onsuccess = () => {
+          if (request.result && request.result.data) {
+            resolve(request.result.data);
+          } else {
+            // Fallback to localStorage
+            const stored = localStorage.getItem(storeKey);
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              resolve(parsed.data);
+            } else {
+              resolve(null);
+            }
+          }
+        };
+        request.onerror = () => {
+          // Fallback to localStorage
+          const stored = localStorage.getItem(storeKey);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            resolve(parsed.data);
+          } else {
+            resolve(null);
+          }
+        };
+      });
     } catch (error) {
       console.error('Failed to get data:', error);
       // Fallback to localStorage
@@ -100,6 +133,44 @@ export class DataPersistenceManager {
         return parsed.data;
       }
       return null;
+    }
+  }
+
+  async checkDataIntegrity(key: string): Promise<{ layers: { [key: string]: boolean }, consistent: boolean, errors: string[] }> {
+    const layers: { [key: string]: boolean } = {};
+    const errors: string[] = [];
+    
+    try {
+      // Check IndexedDB
+      const dbData = await this.getData(key);
+      layers['IndexedDB'] = !!dbData;
+      
+      // Check localStorage
+      const storeKey = `slot_${this.slot}_${key}`;
+      const localData = localStorage.getItem(storeKey);
+      layers['localStorage'] = !!localData;
+      
+      // Check sessionStorage
+      const sessionData = sessionStorage.getItem(storeKey);
+      layers['sessionStorage'] = !!sessionData;
+      
+      // Add other storage layer checks
+      layers['cookies'] = document.cookie.includes(storeKey);
+      layers['webSQL'] = false; // Deprecated
+      layers['fileSystem'] = false; // Not accessible
+      layers['cache'] = false; // Would need service worker
+      layers['broadcastChannel'] = typeof BroadcastChannel !== 'undefined';
+      
+      const consistent = Object.values(layers).filter(Boolean).length >= 2;
+      
+      if (!consistent) {
+        errors.push('Insufficient storage layer redundancy');
+      }
+      
+      return { layers, consistent, errors };
+    } catch (error) {
+      errors.push(`Integrity check failed: ${error}`);
+      return { layers, consistent: false, errors };
     }
   }
 
@@ -119,6 +190,21 @@ export class AccountManager {
   constructor(slot: number) {
     this.slot = slot;
     this.dataManager = new DataPersistenceManager(slot);
+  }
+
+  async getAllAccounts(): Promise<UserAccount[]> {
+    const accounts: UserAccount[] = [];
+    
+    // Check all 3 slots for accounts
+    for (let i = 1; i <= 3; i++) {
+      const manager = new DataPersistenceManager(i);
+      const account = await manager.getData('account');
+      if (account) {
+        accounts.push(account);
+      }
+    }
+    
+    return accounts;
   }
 
   async createAccount(name: string, dob: string, password: string): Promise<UserAccount> {
