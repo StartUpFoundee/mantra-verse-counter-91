@@ -2,40 +2,34 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mic, Hand, Infinity, Clock, Sparkles, Calendar } from "lucide-react";
-import { isUserLoggedIn, getUserData } from "@/utils/spiritualIdUtils";
 import ThemeToggle from "@/components/ThemeToggle";
-import WelcomeScreen from "@/components/WelcomeScreen";
-import ProfileHeader from "@/components/ProfileHeader";
+import ProfileManager from "@/components/ProfileManager";
 import WelcomePopup from "@/components/WelcomePopup";
-import ActiveDaysButton from "@/components/ActiveDaysButton";
 import { getLifetimeCount, getTodayCount } from "@/utils/indexedDBUtils";
 import { toast } from "@/components/ui/sonner";
 import ModernCard from "@/components/ModernCard";
 import StatsCard from "@/components/StatsCard";
 import ActionCard from "@/components/ActionCard";
+import { useAccountAuth } from "@/hooks/useAccountAuth";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser, isAuthenticated } = useAccountAuth();
   const [lifetimeCount, setLifetimeCount] = useState<number>(0);
   const [todayCount, setTodayCount] = useState<number>(0);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isMigrating, setIsMigrating] = useState<boolean>(false);
 
   useEffect(() => {
     const loadData = async () => {
+      if (!isAuthenticated) return;
+      
       setIsLoading(true);
       try {
-        const loggedIn = isUserLoggedIn();
-        setIsLoggedIn(loggedIn);
+        const lifetime = await getLifetimeCount();
+        const today = await getTodayCount();
         
-        if (loggedIn) {
-          const lifetime = await getLifetimeCount();
-          const today = await getTodayCount();
-          
-          setLifetimeCount(lifetime);
-          setTodayCount(today);
-        }
+        setLifetimeCount(lifetime);
+        setTodayCount(today);
       } catch (error) {
         console.error("Error loading data:", error);
         toast.error("There was an error loading your data. Please try again.");
@@ -45,54 +39,10 @@ const HomePage: React.FC = () => {
     };
     
     loadData();
-  }, []);
+  }, [isAuthenticated]);
 
-  if (!isLoggedIn) {
-    if (isLoading || isMigrating) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
-          <div className="mb-6 text-amber-600 dark:text-amber-400 text-xl font-medium">
-            {isMigrating ? "Upgrading your spiritual journey..." : "Loading..."}
-          </div>
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-amber-200 dark:border-amber-800 rounded-full animate-spin"></div>
-            <div className="absolute top-0 left-0 w-16 h-16 border-4 border-transparent border-t-amber-500 rounded-full animate-spin"></div>
-          </div>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
-        <header className="py-6 lg:py-8 text-center relative">
-          <div className="absolute right-4 lg:right-8 top-4 lg:top-6">
-            <ThemeToggle />
-          </div>
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center shadow-lg">
-              <Sparkles className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
-            </div>
-            <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-              Mantra Verse
-            </h1>
-          </div>
-          <p className="text-gray-600 dark:text-gray-300 mt-2 text-base lg:text-lg">Count your spiritual practice with ease</p>
-        </header>
-        
-        <main className="flex-1 flex flex-col items-center justify-center px-4 lg:px-8 pb-12">
-          <WelcomeScreen />
-        </main>
-        
-        <footer className="py-6 text-center text-gray-500 dark:text-gray-400 text-sm lg:text-base">
-          <p>Created with 🧡 for spiritual practice</p>
-        </footer>
-      </div>
-    );
-  }
-
-  const userData = getUserData();
-
-  if (isLoading) {
+  // Show loading while data is being fetched
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
         <div className="mb-6 text-amber-600 dark:text-amber-400 text-xl font-medium">
@@ -122,13 +72,13 @@ const HomePage: React.FC = () => {
                 Mantra Verse
               </h1>
               <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300">
-                {userData ? `Namaste, ${userData.name} Ji` : 'Spiritual Practice'}
+                {currentUser ? `Namaste, ${currentUser.name} Ji` : 'Spiritual Practice'}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 lg:gap-3">
             <ThemeToggle />
-            <ProfileHeader />
+            <ProfileManager />
           </div>
         </div>
       </header>
