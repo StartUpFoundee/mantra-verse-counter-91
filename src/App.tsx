@@ -19,8 +19,9 @@ import { useAccountAuth } from "./hooks/useAccountAuth";
 const queryClient = new QueryClient();
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAccountAuth();
+  const { isAuthenticated, isLoading, currentUser } = useAccountAuth();
   const [dbInitialized, setDbInitialized] = useState(false);
+  const [initializing, setInitializing] = useState(true);
 
   // Initialize IndexedDB when the app starts
   useEffect(() => {
@@ -36,24 +37,39 @@ const AppContent: React.FC = () => {
     init();
   }, []);
 
+  // Wait for both database and auth to initialize
+  useEffect(() => {
+    if (dbInitialized && !isLoading) {
+      setInitializing(false);
+    }
+  }, [dbInitialized, isLoading]);
+
   // Show loading screen while initializing
-  if (!dbInitialized || isLoading) {
+  if (initializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
         <div className="mb-6 text-amber-600 dark:text-amber-400 text-xl font-medium">
-          Initializing your spiritual journey...
+          {!dbInitialized ? 'Initializing database...' : 'Restoring your session...'}
         </div>
         <div className="relative">
           <div className="w-16 h-16 border-4 border-amber-200 dark:border-amber-800 rounded-full animate-spin"></div>
           <div className="absolute top-0 left-0 w-16 h-16 border-4 border-transparent border-t-amber-500 rounded-full animate-spin"></div>
         </div>
+        {currentUser && (
+          <div className="mt-4 text-sm text-gray-600 dark:text-gray-300">
+            Welcome back, {currentUser.name}
+          </div>
+        )}
       </div>
     );
   }
 
   // Show identity system if not authenticated
   if (!isAuthenticated) {
-    return <IdentitySystem onAuthSuccess={() => window.location.href = '/'} />;
+    return <IdentitySystem onAuthSuccess={() => {
+      // Force navigation to home after successful auth
+      window.location.href = '/';
+    }} />;
   }
 
   // Show main app if authenticated

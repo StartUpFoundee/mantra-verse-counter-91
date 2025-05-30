@@ -1,4 +1,3 @@
-
 /**
  * Advanced Device Fingerprinting System
  * Supports 12+ detection methods for desktop, laptop, and mobile
@@ -326,9 +325,10 @@ export const generateDeviceFingerprint = async (): Promise<string> => {
   }
 };
 
-// Cache fingerprint for session with localStorage backup
+// Cache fingerprint for session with enhanced persistence
 let cachedFingerprint: string | null = null;
 const FINGERPRINT_CACHE_KEY = 'device_fingerprint_cache';
+const FINGERPRINT_SESSION_KEY = 'device_fingerprint_session';
 
 export const getCachedDeviceFingerprint = async (): Promise<string> => {
   // First check memory cache
@@ -336,18 +336,45 @@ export const getCachedDeviceFingerprint = async (): Promise<string> => {
     return cachedFingerprint;
   }
   
-  // Then check localStorage cache
+  // Then check sessionStorage for current session
+  const sessionStored = sessionStorage.getItem(FINGERPRINT_SESSION_KEY);
+  if (sessionStored) {
+    cachedFingerprint = sessionStored;
+    return cachedFingerprint;
+  }
+  
+  // Then check localStorage cache for persistence
   const stored = localStorage.getItem(FINGERPRINT_CACHE_KEY);
   if (stored) {
-    cachedFingerprint = stored;
-    return cachedFingerprint;
+    try {
+      const parsed = JSON.parse(stored);
+      const now = Date.now();
+      
+      // Check if fingerprint is less than 24 hours old
+      if (parsed.timestamp && (now - parsed.timestamp) < 24 * 60 * 60 * 1000) {
+        cachedFingerprint = parsed.fingerprint;
+        
+        // Store in session for faster access
+        sessionStorage.setItem(FINGERPRINT_SESSION_KEY, cachedFingerprint);
+        
+        return cachedFingerprint;
+      }
+    } catch (e) {
+      console.error('Error parsing stored fingerprint:', e);
+    }
   }
   
   // Generate new fingerprint
   cachedFingerprint = await generateDeviceFingerprint();
   
-  // Store in localStorage for persistence across tabs
-  localStorage.setItem(FINGERPRINT_CACHE_KEY, cachedFingerprint);
+  // Store in both localStorage and sessionStorage
+  const storageData = {
+    fingerprint: cachedFingerprint,
+    timestamp: Date.now()
+  };
+  
+  localStorage.setItem(FINGERPRINT_CACHE_KEY, JSON.stringify(storageData));
+  sessionStorage.setItem(FINGERPRINT_SESSION_KEY, cachedFingerprint);
   
   return cachedFingerprint;
 };
@@ -355,4 +382,33 @@ export const getCachedDeviceFingerprint = async (): Promise<string> => {
 export const clearFingerprintCache = (): void => {
   cachedFingerprint = null;
   localStorage.removeItem(FINGERPRINT_CACHE_KEY);
+  sessionStorage.removeItem(FINGERPRINT_SESSION_KEY);
 };
+
+// Enhanced sync across tabs
+export const syncFingerprintAcrossTabs = (): void => {
+  if ('BroadcastChannel' in window) {
+    const channel = new BroadcastChannel('device-fingerprint-sync');
+    
+    // Listen for fingerprint updates from other tabs
+    channel.onmessage = (event) => {
+      if (event.data.type === 'fingerprint-update' && event.data.fingerprint) {
+        cachedFingerprint = event.data.fingerprint;
+        sessionStorage.setItem(FINGERPRINT_SESSION_KEY, cachedFingerprint);
+      }
+    };
+    
+    // If we have a cached fingerprint, broadcast it to other tabs
+    if (cachedFingerprint) {
+      channel.postMessage({
+        type: 'fingerprint-update',
+        fingerprint: cachedFingerprint
+      });
+    }
+  }
+};
+
+// Initialize sync on module load
+if (typeof window !== 'undefined') {
+  syncFingerprintAcrossTabs();
+}
