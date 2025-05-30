@@ -326,18 +326,33 @@ export const generateDeviceFingerprint = async (): Promise<string> => {
   }
 };
 
-// Cache fingerprint for session
+// Cache fingerprint for session with localStorage backup
 let cachedFingerprint: string | null = null;
+const FINGERPRINT_CACHE_KEY = 'device_fingerprint_cache';
 
 export const getCachedDeviceFingerprint = async (): Promise<string> => {
+  // First check memory cache
   if (cachedFingerprint) {
     return cachedFingerprint;
   }
   
+  // Then check localStorage cache
+  const stored = localStorage.getItem(FINGERPRINT_CACHE_KEY);
+  if (stored) {
+    cachedFingerprint = stored;
+    return cachedFingerprint;
+  }
+  
+  // Generate new fingerprint
   cachedFingerprint = await generateDeviceFingerprint();
+  
+  // Store in localStorage for persistence across tabs
+  localStorage.setItem(FINGERPRINT_CACHE_KEY, cachedFingerprint);
+  
   return cachedFingerprint;
 };
 
 export const clearFingerprintCache = (): void => {
   cachedFingerprint = null;
+  localStorage.removeItem(FINGERPRINT_CACHE_KEY);
 };

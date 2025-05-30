@@ -14,14 +14,14 @@ import { useAccountAuth } from "@/hooks/useAccountAuth";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, isAuthenticated } = useAccountAuth();
+  const { currentUser, isAuthenticated, isLoading: authLoading } = useAccountAuth();
   const [lifetimeCount, setLifetimeCount] = useState<number>(0);
   const [todayCount, setTodayCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const loadData = async () => {
-      if (!isAuthenticated) return;
+      if (!isAuthenticated || authLoading) return;
       
       setIsLoading(true);
       try {
@@ -39,10 +39,15 @@ const HomePage: React.FC = () => {
     };
     
     loadData();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
+
+  // Don't render anything if not authenticated - App.tsx will handle showing IdentitySystem
+  if (!isAuthenticated) {
+    return null;
+  }
 
   // Show loading while data is being fetched
-  if (isLoading || !isAuthenticated) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
         <div className="mb-6 text-amber-600 dark:text-amber-400 text-xl font-medium">

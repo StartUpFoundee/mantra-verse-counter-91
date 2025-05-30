@@ -53,7 +53,7 @@ const AppContent: React.FC = () => {
 
   // Show identity system if not authenticated
   if (!isAuthenticated) {
-    return <IdentitySystem onAuthSuccess={() => {}} />;
+    return <IdentitySystem onAuthSuccess={() => window.location.href = '/'} />;
   }
 
   // Show main app if authenticated

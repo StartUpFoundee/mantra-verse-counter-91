@@ -20,7 +20,8 @@ import {
   RefreshCw, 
   Download, 
   Settings,
-  CheckCircle 
+  CheckCircle,
+  Upload
 } from 'lucide-react';
 import { useAccountAuth } from '@/hooks/useAccountAuth';
 import { useQRTransfer } from '@/hooks/useQRTransfer';
@@ -68,7 +69,7 @@ const ProfileManager: React.FC = () => {
   const handleRefreshQR = async () => {
     try {
       await refreshQR(currentUser.slot);
-      toast.success('QR code updated');
+      toast.success('QR code updated with latest data');
     } catch (error) {
       toast.error('Failed to refresh QR code');
     }
@@ -87,6 +88,8 @@ const ProfileManager: React.FC = () => {
     try {
       await logout();
       toast.success('Logged out successfully');
+      // Redirect to identity system
+      window.location.href = '/';
     } catch (error) {
       toast.error('Failed to logout');
     }
@@ -98,8 +101,8 @@ const ProfileManager: React.FC = () => {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 w-10 rounded-full">
             <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold">
-                {getInitials(currentUser.name)}
+              <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold text-lg">
+                {currentUser.avatar || getInitials(currentUser.name)}
               </AvatarFallback>
             </Avatar>
           </Button>
@@ -110,8 +113,8 @@ const ProfileManager: React.FC = () => {
           <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20">
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12">
-                <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold text-lg">
-                  {getInitials(currentUser.name)}
+                <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold text-xl">
+                  {currentUser.avatar || getInitials(currentUser.name)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
@@ -160,7 +163,7 @@ const ProfileManager: React.FC = () => {
           <div className="p-2">
             <DropdownMenuItem onClick={handleGenerateQR} disabled={isGenerating}>
               <QrCode className="mr-2 h-4 w-4" />
-              {isGenerating ? 'Generating...' : 'Show QR Code'}
+              {isGenerating ? 'Generating...' : 'Export QR Code'}
             </DropdownMenuItem>
           </div>
 
@@ -186,13 +189,13 @@ const ProfileManager: React.FC = () => {
       <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center">Account QR Code</DialogTitle>
+            <DialogTitle className="text-center">Export Account</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
             {currentQR && (
               <div className="text-center">
-                <div className="bg-white p-4 rounded-lg inline-block shadow-sm">
+                <div className="bg-white p-4 rounded-lg inline-block shadow-sm border">
                   <QRCode 
                     value={currentQR.qrCode} 
                     size={200}
@@ -200,7 +203,7 @@ const ProfileManager: React.FC = () => {
                   />
                 </div>
                 
-                <p className="text-sm text-gray-500 mt-3">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-3">
                   Scan this QR code to import your account on another device
                 </p>
                 
@@ -230,6 +233,11 @@ const ProfileManager: React.FC = () => {
                 <Download className="w-4 h-4 mr-2" />
                 Download
               </Button>
+            </div>
+            
+            <div className="text-xs text-gray-500 dark:text-gray-400 p-2 bg-amber-50 dark:bg-amber-900/20 rounded">
+              💡 Use this QR code to transfer your account to another device. 
+              Import it using the "Import Account" option on the target device.
             </div>
           </div>
         </DialogContent>

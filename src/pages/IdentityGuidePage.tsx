@@ -1,10 +1,11 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ThemeToggle from "@/components/ThemeToggle";
-import ProfileHeader from "@/components/ProfileHeader";
+import ProfileManager from "@/components/ProfileManager";
 import ModernCard from "@/components/ModernCard";
 
 const IdentityGuidePage: React.FC = () => {
@@ -22,10 +23,10 @@ const IdentityGuidePage: React.FC = () => {
         >
           <ArrowLeft className="h-5 w-5 lg:h-6 lg:w-6" />
         </Button>
-        <h1 className="text-xl lg:text-2xl font-bold text-amber-600 dark:text-amber-400">Identity Management Guide</h1>
+        <h1 className="text-xl lg:text-2xl font-bold text-amber-600 dark:text-amber-400">Identity System Guide</h1>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <ProfileHeader />
+          <ProfileManager />
           <Button 
             variant="ghost" 
             size="icon"
@@ -61,72 +62,104 @@ const IdentityGuidePage: React.FC = () => {
               <ModernCard className="p-6 lg:p-8 border-amber-200/50 dark:border-amber-700/50" gradient>
                 <div className="space-y-6 lg:space-y-8">
                   <section>
-                    <h2 className="text-2xl lg:text-3xl font-bold text-amber-600 dark:text-amber-400 mb-4">Managing Your Spiritual Identity</h2>
+                    <h2 className="text-2xl lg:text-3xl font-bold text-amber-600 dark:text-amber-400 mb-4">Advanced Identity Management System</h2>
                     
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">What is your Identity?</h3>
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">Overview</h3>
                     <p className="text-gray-700 dark:text-gray-300 mb-4 text-base lg:text-lg leading-relaxed">
-                      Your spiritual identity in our app consists of your chosen name, date of birth, and spiritual symbol. 
-                      This identity helps personalize your chanting experience.
+                      Our new identity system provides secure, multi-account management with device fingerprinting 
+                      and QR-based account transfer capabilities. Each device supports exactly 3 accounts with 
+                      seamless synchronization across browser tabs.
                     </p>
                     
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">Your Unique ID</h3>
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">Key Features</h3>
                     <ul className="list-disc pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>Your ID follows the format: DDMMYYYY_XXXX</li>
-                      <li>The first part is your date of birth (e.g., 15082000 for August 15, 2000)</li>
-                      <li>The second part is a unique number generated when you created your account</li>
-                      <li>This format makes it easy to remember - just know your birthday and the 4 digits</li>
+                      <li><strong>3 Account Slots:</strong> Each device can store exactly 3 user accounts</li>
+                      <li><strong>Device Fingerprinting:</strong> Advanced 12+ method device identification</li>
+                      <li><strong>QR Transfer:</strong> Export and import accounts between devices</li>
+                      <li><strong>Cross-Tab Sync:</strong> Account data syncs across all browser tabs</li>
+                      <li><strong>Secure Storage:</strong> Encrypted data with device-specific keys</li>
+                      <li><strong>Password Protection:</strong> Each account secured with encrypted passwords</li>
                     </ul>
                     
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">How to Recover Your ID</h3>
-                    <p className="text-gray-700 dark:text-gray-300 mb-2 text-base lg:text-lg">If you forget your full ID but remember your date of birth:</p>
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">Account Creation Process</h3>
                     <ol className="list-decimal pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>Click on "Enter Different ID" on the login screen</li>
-                      <li>Enter your date of birth</li>
-                      <li>The system will help you recover your ID</li>
-                      <li>Select your ID to access your account</li>
+                      <li>Choose an empty account slot (1, 2, or 3)</li>
+                      <li>Enter your name and date of birth</li>
+                      <li>Create a secure password</li>
+                      <li>System generates unique ID with device fingerprint</li>
+                      <li>Account is encrypted and stored locally</li>
+                      <li>Automatic login after creation</li>
                     </ol>
                     
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">How Your Identity is Stored</h3>
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">Device Fingerprinting Technology</h3>
+                    <p className="text-gray-700 dark:text-gray-300 mb-2 text-base lg:text-lg">Our system uses multiple fingerprinting methods:</p>
                     <ul className="list-disc pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>Your identity is stored locally on your device using browser storage</li>
-                      <li>No data is sent to external servers</li>
-                      <li>Your information remains private and accessible only on your current device</li>
+                      <li>Screen resolution, color depth, and pixel ratio</li>
+                      <li>Browser information and installed plugins</li>
+                      <li>Canvas and WebGL rendering signatures</li>
+                      <li>Audio context fingerprinting</li>
+                      <li>Hardware specifications (CPU, memory)</li>
+                      <li>Font availability and rendering</li>
+                      <li>Timezone and locale settings</li>
+                      <li>Touch and input device capabilities</li>
+                      <li>Network and battery information (when available)</li>
                     </ul>
                   </section>
                   
                   <section>
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">Accessing Your Identity on Different Devices</h3>
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">QR Code Account Transfer</h3>
                     
-                    <h4 className="font-medium text-amber-400 dark:text-amber-200 mb-2 text-base lg:text-lg">On Chrome Browser:</h4>
+                    <h4 className="font-medium text-amber-400 dark:text-amber-200 mb-2 text-base lg:text-lg">Exporting Your Account:</h4>
                     <ol className="list-decimal pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>Simply enter your ID on the login screen</li>
-                      <li>Alternatively, use the ID recovery option with your date of birth</li>
-                      <li>Your profile will be restored with all your chanting history</li>
+                      <li>Click your profile avatar in the top-right corner</li>
+                      <li>Select "Export QR Code" from the dropdown menu</li>
+                      <li>A QR code will be generated containing your encrypted account data</li>
+                      <li>Use "Refresh" to update the QR with latest data</li>
+                      <li>Use "Download" to save the QR code image</li>
+                      <li>QR codes expire after 24 hours for security</li>
                     </ol>
                     
-                    <h4 className="font-medium text-amber-400 dark:text-amber-200 mb-2 text-base lg:text-lg">On Mobile Devices:</h4>
+                    <h4 className="font-medium text-amber-400 dark:text-amber-200 mb-2 text-base lg:text-lg">Importing an Account:</h4>
                     <ol className="list-decimal pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>Use the same ID on any device to access your profile</li>
-                      <li>For best experience, add our website to your home screen</li>
-                      <li>Your identity will remain saved as long as you don't clear browser data</li>
+                      <li>Go to the account selection screen</li>
+                      <li>Click "Import Account from QR" button</li>
+                      <li>Choose an available account slot</li>
+                      <li>Paste the QR code data or scan using camera (coming soon)</li>
+                      <li>Account will be decrypted and imported to the selected slot</li>
+                      <li>Login with your original password</li>
                     </ol>
                   </section>
                   
                   <section>
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">Security Considerations</h3>
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">Security & Privacy</h3>
                     <ul className="list-disc pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>Anyone with access to your device can access your profile</li>
-                      <li>To protect your data, logout when using shared devices</li>
-                      <li>Remember your unique ID to recover your account on any device</li>
+                      <li><strong>Local Storage:</strong> All data stored locally on your device</li>
+                      <li><strong>Encryption:</strong> Account data encrypted using device-specific keys</li>
+                      <li><strong>No Server Storage:</strong> No data sent to external servers</li>
+                      <li><strong>Password Security:</strong> Passwords hashed with device fingerprint salt</li>
+                      <li><strong>Cross-Tab Security:</strong> Secure synchronization using BroadcastChannel</li>
+                      <li><strong>QR Expiration:</strong> Transfer QR codes expire for security</li>
                     </ul>
                     
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">Account Management</h3>
+                    <ul className="list-disc pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
+                      <li><strong>Login Protection:</strong> 3 failed attempts trigger temporary lockout</li>
+                      <li><strong>Account Switching:</strong> Easy switching between your 3 accounts</li>
+                      <li><strong>Logout Security:</strong> Returns to account selection, clears session</li>
+                      <li><strong>Data Persistence:</strong> Accounts persist across browser restarts</li>
+                      <li><strong>Profile Management:</strong> View account details, copy ID, export QR</li>
+                    </ul>
+                  </section>
+                  
+                  <section>
                     <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">Troubleshooting</h3>
-                    <p className="text-gray-700 dark:text-gray-300 mb-2 text-base lg:text-lg">If you can't access your account:</p>
+                    <p className="text-gray-700 dark:text-gray-300 mb-2 text-base lg:text-lg">Common issues and solutions:</p>
                     <ul className="list-disc pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>Check if you've entered your ID correctly</li>
-                      <li>Try the ID recovery option with your date of birth</li>
-                      <li>Make sure you haven't cleared browser data recently</li>
-                      <li>Create a new identity if needed</li>
+                      <li><strong>Accounts not showing across tabs:</strong> Clear browser cache and reload</li>
+                      <li><strong>Failed QR import:</strong> Ensure QR data is complete and not expired</li>
+                      <li><strong>Login lockout:</strong> Wait 5 minutes for automatic unlock</li>
+                      <li><strong>Account slots full:</strong> Remove an account to free up space</li>
+                      <li><strong>Device fingerprint issues:</strong> Try clearing fingerprint cache</li>
                     </ul>
                   </section>
                 </div>
@@ -137,72 +170,56 @@ const IdentityGuidePage: React.FC = () => {
               <ModernCard className="p-6 lg:p-8 border-amber-200/50 dark:border-amber-700/50" gradient>
                 <div className="space-y-6 lg:space-y-8">
                   <section>
-                    <h2 className="text-2xl lg:text-3xl font-bold text-amber-600 dark:text-amber-400 mb-4">आपकी आध्यात्मिक पहचान का प्रबंधन</h2>
+                    <h2 className="text-2xl lg:text-3xl font-bold text-amber-600 dark:text-amber-400 mb-4">उन्नत पहचान प्रबंधन प्रणाली</h2>
                     
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">आपकी पहचान क्या है?</h3>
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">अवलोकन</h3>
                     <p className="text-gray-700 dark:text-gray-300 mb-4 text-base lg:text-lg leading-relaxed">
-                      हमारे ऐप में आपकी आध्यात्मिक पहचान में आपका चुना हुआ नाम, जन्म तिथि और आध्यात्मिक प्रतीक शामिल है। 
-                      यह पहचान आपके जप अनुभव को व्यक्तिगत बनाने में मदद करती है।
+                      हमारी नई पहचान प्रणाली डिवाइस फिंगरप्रिंटिंग और QR-आधारित खाता स्थानांतरण क्षमताओं के साथ 
+                      सुरक्षित, बहु-खाता प्रबंधन प्रदान करती है। प्रत्येक डिवाइस ब्राउज़र टैब्स में निर्बाध 
+                      सिंक्रोनाइज़ेशन के साथ बिल्कुल 3 खातों का समर्थन करता है।
                     </p>
                     
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">आपकी अनूठी आईडी</h3>
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">मुख्य विशेषताएं</h3>
                     <ul className="list-disc pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>आपकी आईडी इस प्रारूप का अनुसरण करती है: DDMMYYYY_XXXX</li>
-                      <li>पहला भाग आपकी जन्म तिथि है (उदाहरण के लिए, 15 अगस्त 2000 के लिए 15082000)</li>
-                      <li>दूसरा भाग एक अनूठा नंबर है जो आपके खाता बनाते समय उत्पन्न होता है</li>
-                      <li>यह प्रारूप याद रखना आसान बनाता है - बस अपना जन्मदिन और 4 अंक जानें</li>
+                      <li><strong>3 खाता स्लॉट:</strong> प्रत्येक डिवाइस बिल्कुल 3 उपयोगकर्ता खाते संग्रहीत कर सकता है</li>
+                      <li><strong>डिवाइस फिंगरप्रिंटिंग:</strong> उन्नत 12+ विधि डिवाइस पहचान</li>
+                      <li><strong>QR स्थानांतरण:</strong> डिवाइसेस के बीच खातों का निर्यात और आयात</li>
+                      <li><strong>क्रॉस-टैब सिंक:</strong> सभी ब्राउज़र टैब्स में खाता डेटा सिंक</li>
+                      <li><strong>सुरक्षित भंडारण:</strong> डिवाइस-विशिष्ट कुंजियों के साथ एन्क्रिप्टेड डेटा</li>
+                      <li><strong>पासवर्ड सुरक्षा:</strong> एन्क्रिप्टेड पासवर्ड के साथ प्रत्येक खाता सुरक्षित</li>
                     </ul>
                     
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">अपनी आईडी को पुनः प्राप्त कैसे करें</h3>
-                    <p className="text-gray-700 dark:text-gray-300 mb-2 text-base lg:text-lg">यदि आप अपनी पूरी आईडी भूल जाते हैं लेकिन अपनी जन्म तिथि याद है:</p>
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">खाता निर्माण प्रक्रिया</h3>
                     <ol className="list-decimal pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>लॉगिन स्क्रीन पर "अलग आईडी दर्ज करें" पर क्लिक करें</li>
-                      <li>अपनी जन्म तिथि दर्ज करें</li>
-                      <li>सिस्टम आपको आपकी आईडी पुनर्प्राप्त करने में मदद करेगा</li>
-                      <li>अपने खाते तक पहुंचने के लिए अपनी आईडी का चयन करें</li>
+                      <li>एक खाली खाता स्लॉट (1, 2, या 3) चुनें</li>
+                      <li>अपना नाम और जन्म तिथि दर्ज करें</li>
+                      <li>एक सुरक्षित पासवर्ड बनाएं</li>
+                      <li>सिस्टम डिवाइस फिंगरप्रिंट के साथ अनूठी आईडी उत्पन्न करता है</li>
+                      <li>खाता एन्क्रिप्ट किया जाता है और स्थानीय रूप से संग्रहीत किया जाता है</li>
+                      <li>निर्माण के बाद स्वचालित लॉगिन</li>
                     </ol>
                     
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">आपकी पहचान कैसे संग्रहीत की जाती है</h3>
-                    <ul className="list-disc pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>आपकी पहचान ब्राउज़र स्टोरेज का उपयोग करके आपके डिवाइस पर स्थानीय रूप से संग्रहीत की जाती है</li>
-                      <li>कोई डेटा बाहरी सर्वर पर नहीं भेजा जाता है</li>
-                      <li>आपकी जानकारी निजी रहती है और केवल आपके वर्तमान डिवाइस पर ही पहुंच योग्य होती है</li>
-                    </ul>
-                  </section>
-                  
-                  <section>
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">विभिन्न डिवाइसों पर अपनी पहचान तक पहुंचना</h3>
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">QR कोड खाता स्थानांतरण</h3>
                     
-                    <h4 className="font-medium text-amber-400 dark:text-amber-200 mb-2 text-base lg:text-lg">Chrome ब्राउज़र पर:</h4>
+                    <h4 className="font-medium text-amber-400 dark:text-amber-200 mb-2 text-base lg:text-lg">अपना खाता निर्यात करना:</h4>
                     <ol className="list-decimal pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>लॉगिन स्क्रीन पर अपनी आईडी दर्ज करें</li>
-                      <li>वैकल्पिक रूप से, अपनी जन्म तिथि के साथ आईडी पुनर्प्राप्ति विकल्प का उपयोग करें</li>
-                      <li>आपकी प्रोफ़ाइल आपके सभी जप इतिहास के साथ पुनर्स्थापित की जाएगी</li>
-                    </ol>
-                    
-                    <h4 className="font-medium text-amber-400 dark:text-amber-200 mb-2 text-base lg:text-lg">मोबाइल डिवाइस पर:</h4>
-                    <ol className="list-decimal pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>अपनी प्रोफ़ाइल तक पहुंचने के लिए किसी भी डिवाइस पर समान आईडी का उपयोग करें</li>
-                      <li>सर्वोत्तम अनुभव के लिए, हमारी वेबसाइट को अपनी होम स्क्रीन पर जोड़ें</li>
-                      <li>जब तक आप ब्राउज़र डेटा साफ़ नहीं करते, तब तक आपकी पहचान सहेजी रहेगी</li>
+                      <li>ऊपरी-दाएं कोने में अपने प्रोफ़ाइल अवतार पर क्लिक करें</li>
+                      <li>ड्रॉपडाउन मेनू से "Export QR Code" चुनें</li>
+                      <li>आपके एन्क्रिप्टेड खाता डेटा वाला QR कोड उत्पन्न होगा</li>
+                      <li>नवीनतम डेटा के साथ QR अपडेट करने के लिए "Refresh" का उपयोग करें</li>
+                      <li>QR कोड छवि सहेजने के लिए "Download" का उपयोग करें</li>
+                      <li>सुरक्षा के लिए QR कोड 24 घंटे बाद समाप्त हो जाते हैं</li>
                     </ol>
                   </section>
                   
                   <section>
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">सुरक्षा विचार</h3>
+                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">सुरक्षा और गोपनीयता</h3>
                     <ul className="list-disc pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>आपके डिवाइस तक पहुंच रखने वाला कोई भी व्यक्ति आपकी प्रोफ़ाइल तक पहुंच सकता है</li>
-                      <li>अपने डेटा की सुरक्षा के लिए, साझा डिवाइस का उपयोग करते समय लॉगआउट करें</li>
-                      <li>किसी भी डिवाइस पर अपना खाता पुनर्प्राप्त करने के लिए अपनी अनूठी आईडी याद रखें</li>
-                    </ul>
-                    
-                    <h3 className="text-lg lg:text-xl font-semibold text-amber-500 dark:text-amber-300 mb-3">समस्या निवारण</h3>
-                    <p className="text-gray-700 dark:text-gray-300 mb-2 text-base lg:text-lg">यदि आप अपने खाते तक नहीं पहुंच सकते हैं:</p>
-                    <ul className="list-disc pl-5 text-gray-700 dark:text-gray-300 space-y-2 mb-4 text-base lg:text-lg leading-relaxed">
-                      <li>जांचें कि क्या आपने अपनी आईडी सही दर्ज की है</li>
-                      <li>अपनी जन्म तिथि के साथ आईडी पुनर्प्राप्ति विकल्प का प्रयास करें</li>
-                      <li>सुनिश्चित करें कि आपने हाल ही में ब्राउज़र डेटा साफ़ नहीं किया है</li>
-                      <li>यदि आवश्यक हो तो नई पहचान बनाएं</li>
+                      <li><strong>स्थानीय भंडारण:</strong> सभी डेटा आपके डिवाइस पर स्थानीय रूप से संग्रहीत</li>
+                      <li><strong>एन्क्रिप्शन:</strong> डिवाइस-विशिष्ट कुंजियों का उपयोग करके खाता डेटा एन्क्रिप्टेड</li>
+                      <li><strong>कोई सर्वर भंडारण नहीं:</strong> बाहरी सर्वर को कोई डेटा नहीं भेजा जाता</li>
+                      <li><strong>पासवर्ड सुरक्षा:</strong> डिवाइस फिंगरप्रिंट सॉल्ट के साथ पासवर्ड हैश</li>
+                      <li><strong>QR समाप्ति:</strong> सुरक्षा के लिए स्थानांतरण QR कोड समाप्त हो जाते हैं</li>
                     </ul>
                   </section>
                 </div>
