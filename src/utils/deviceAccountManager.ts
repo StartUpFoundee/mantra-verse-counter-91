@@ -370,6 +370,8 @@ function generateUserAccount(name: string, dob: string): UserAccount {
     dob: dob,
     createdAt: new Date().toISOString(),
     lastLogin: new Date().toISOString(),
-    chantingStats: {}
+    chantingStats: {},
+    slot: undefined,
+    deviceFingerprint: undefined
   };
 }

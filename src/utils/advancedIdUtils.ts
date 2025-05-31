@@ -1,17 +1,15 @@
-
 import { getCachedDeviceFingerprint } from './deviceFingerprint';
 
 export interface UserAccount {
   id: string;
   name: string;
   dob: string;
-  passwordHash?: string;
-  slot: number;
-  deviceFingerprint: string;
   createdAt: string;
   lastLogin: string;
-  avatar?: string;
-  chantingStats?: any;
+  chantingStats: Record<string, any>;
+  symbol?: string; // Add symbol property for spiritual icons
+  slot?: number;
+  deviceFingerprint?: string;
 }
 
 export interface QRAccountData {
