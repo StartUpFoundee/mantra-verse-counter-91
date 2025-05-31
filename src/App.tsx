@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import AudioCountPage from "./pages/AudioCountPage";
 import ManualCountPage from "./pages/ManualCountPage";
@@ -22,7 +22,6 @@ const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading, currentUser, deviceId } = useBulletproofAuth();
   const [dbInitialized, setDbInitialized] = useState(false);
   const [initializing, setInitializing] = useState(true);
-  const navigate = useNavigate();
 
   // Initialize IndexedDB when the app starts
   useEffect(() => {
@@ -44,11 +43,6 @@ const AppContent: React.FC = () => {
       setInitializing(false);
     }
   }, [dbInitialized, isLoading]);
-
-  // Navigate to home page when authentication succeeds
-  const handleAuthSuccess = () => {
-    navigate('/');
-  };
 
   // Show loading screen while initializing
   if (initializing) {
@@ -77,7 +71,10 @@ const AppContent: React.FC = () => {
 
   // Show identity system if not authenticated
   if (!isAuthenticated) {
-    return <IdentitySystem onAuthSuccess={handleAuthSuccess} />;
+    return <IdentitySystem onAuthSuccess={() => {
+      // Force navigation to home after successful auth
+      window.location.href = '/';
+    }} />;
   }
 
   // Show main app if authenticated

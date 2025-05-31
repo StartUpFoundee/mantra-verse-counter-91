@@ -10,11 +10,11 @@ import { toast } from "@/components/ui/sonner";
 import ModernCard from "@/components/ModernCard";
 import StatsCard from "@/components/StatsCard";
 import ActionCard from "@/components/ActionCard";
-import { useBulletproofAuth } from "@/hooks/useBulletproofAuth";
+import { useAccountAuth } from "@/hooks/useAccountAuth";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, isAuthenticated, isLoading: authLoading } = useBulletproofAuth();
+  const { currentUser, isAuthenticated, isLoading: authLoading } = useAccountAuth();
   const [lifetimeCount, setLifetimeCount] = useState<number>(0);
   const [todayCount, setTodayCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);

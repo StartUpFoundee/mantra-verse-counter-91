@@ -32,12 +32,14 @@ const IdentitySystem: React.FC<IdentitySystemProps> = ({ onAuthSuccess }) => {
   };
 
   const handleAccountCreated = () => {
-    // Call the onAuthSuccess callback instead of forcing navigation
+    setCurrentView('selector');
+    setSelectedSlot(null);
     onAuthSuccess();
   };
 
   const handleLoginSuccess = () => {
-    // Call the onAuthSuccess callback instead of forcing navigation
+    setCurrentView('selector');
+    setSelectedSlot(null);
     onAuthSuccess();
   };
 

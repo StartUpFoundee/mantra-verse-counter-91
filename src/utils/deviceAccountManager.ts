@@ -1,377 +1,252 @@
-import { v4 as uuidv4 } from 'uuid';
-import { UserAccount } from './advancedIdUtils';
-import { getBulletproofDeviceId } from './enhancedDeviceFingerprint';
-import CryptoJS from 'crypto-js';
 
-export interface DeviceAccount {
-  encryptedData: string;
-  createdAt: string;
-  lastLogin: string;
-  deviceFingerprint: string;
-}
+import { getBulletproofDeviceId, BulletproofStorage } from './enhancedDeviceFingerprint';
+import { UserAccount, DataPersistenceManager } from './advancedIdUtils';
 
 export interface DeviceAccountSlot {
   slot: number;
+  account: UserAccount | null;
   isEmpty: boolean;
-  account?: UserAccount | null;
+  deviceId: string;
 }
-
-interface DeviceAccounts {
-  [deviceId: string]: {
-    [slot: number]: DeviceAccount;
-  };
-}
-
-const ACCOUNT_SLOTS = [1, 2, 3];
-const STORAGE_KEY = 'device_accounts';
-const LOCKOUT_KEY_PREFIX = 'lockout_';
-const MAX_LOGIN_ATTEMPTS = 3;
-const LOCKOUT_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export class DeviceAccountManager {
-  private static async getStoredDeviceAccounts(): Promise<DeviceAccounts | null> {
+  private static readonly DEVICE_ACCOUNTS_KEY = 'device_accounts';
+  private static readonly MAX_ACCOUNTS_PER_DEVICE = 3;
+  
+  static async getDeviceAccounts(): Promise<DeviceAccountSlot[]> {
+    const deviceId = await getBulletproofDeviceId();
+    
+    // Initialize default slots
+    const defaultSlots: DeviceAccountSlot[] = [
+      { slot: 1, account: null, isEmpty: true, deviceId },
+      { slot: 2, account: null, isEmpty: true, deviceId },
+      { slot: 3, account: null, isEmpty: true, deviceId }
+    ];
+    
     try {
-      const accountsJson = localStorage.getItem(STORAGE_KEY);
-      return accountsJson ? JSON.parse(accountsJson) : null;
-    } catch (error) {
-      console.error('Error getting stored device accounts:', error);
-      return null;
-    }
-  }
-
-  private static async storeDeviceAccounts(accounts: DeviceAccounts): Promise<void> {
-    try {
-      const accountsJson = JSON.stringify(accounts);
-      localStorage.setItem(STORAGE_KEY, accountsJson);
-    } catch (error) {
-      console.error('Error storing device accounts:', error);
-    }
-  }
-
-  private static async encryptAccountData(account: UserAccount, password: string): Promise<string> {
-    try {
-      const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(account), password).toString();
-      return ciphertext;
-    } catch (error) {
-      console.error('Error encrypting account data:', error);
-      throw new Error('Failed to encrypt account data');
-    }
-  }
-
-  private static async decryptAccountData(encryptedData: string, password: string): Promise<UserAccount> {
-    try {
-      const bytes = CryptoJS.AES.decrypt(encryptedData, password);
-      const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
-      if (!decryptedData) {
-        throw new Error('Decryption failed: invalid password or corrupted data');
-      }
-      return JSON.parse(decryptedData);
-    } catch (error) {
-      console.error('Error decrypting account data:', error);
-      throw new Error('Invalid password or corrupted account data');
-    }
-  }
-
-  private static getLoginAttemptsKey(slot: number): string {
-    return `login_attempts_${slot}`;
-  }
-
-  private static async getLoginAttempts(slot: number): Promise<number> {
-    const key = this.getLoginAttemptsKey(slot);
-    const attemptsStr = localStorage.getItem(key);
-    return attemptsStr ? parseInt(attemptsStr, 10) : 0;
-  }
-
-  private static async setLoginAttempts(slot: number, attempts: number): Promise<void> {
-    const key = this.getLoginAttemptsKey(slot);
-    localStorage.setItem(key, attempts.toString());
-  }
-
-  private static async clearLoginAttempts(slot: number): Promise<void> {
-    const key = this.getLoginAttemptsKey(slot);
-    localStorage.removeItem(key);
-  }
-
-  private static getLockoutKey(slot: number): string {
-    return `${LOCKOUT_KEY_PREFIX}${slot}`;
-  }
-
-  public static async setAccountLockout(slot: number): Promise<void> {
-    const lockoutKey = this.getLockoutKey(slot);
-    const lockoutExpiry = Date.now() + LOCKOUT_DURATION;
-    localStorage.setItem(lockoutKey, lockoutExpiry.toString());
-  }
-
-  public static async clearAccountLockout(slot: number): Promise<void> {
-    const lockoutKey = this.getLockoutKey(slot);
-    localStorage.removeItem(lockoutKey);
-  }
-
-  public static checkLockoutStatus(slot: number): boolean {
-    const lockoutKey = this.getLockoutKey(slot);
-    const lockoutExpiryStr = localStorage.getItem(lockoutKey);
-
-    if (lockoutExpiryStr) {
-      const lockoutExpiry = parseInt(lockoutExpiryStr, 10);
-      return Date.now() < lockoutExpiry;
-    }
-
-    return false;
-  }
-
-  public static getRemainingLockoutTime(slot: number): number {
-    const lockoutKey = this.getLockoutKey(slot);
-    const lockoutExpiryStr = localStorage.getItem(lockoutKey);
-
-    if (lockoutExpiryStr) {
-      const lockoutExpiry = parseInt(lockoutExpiryStr, 10);
-      const remainingTime = lockoutExpiry - Date.now();
-      return Math.max(remainingTime, 0);
-    }
-
-    return 0;
-  }
-
-  public static async getDeviceAccounts(): Promise<DeviceAccountSlot[]> {
-    try {
-      const deviceId = await getBulletproofDeviceId();
-      const storedAccounts = await this.getStoredDeviceAccounts() || {};
-      const deviceAccounts = storedAccounts[deviceId] || {};
-
-      return ACCOUNT_SLOTS.map(slot => {
-        const accountData = deviceAccounts[slot];
-        if (accountData) {
-          return {
+      // Check each slot for accounts
+      for (let slot = 1; slot <= 3; slot++) {
+        const manager = new DataPersistenceManager(slot);
+        const account = await manager.getData('account');
+        
+        if (account && account.deviceFingerprint === deviceId) {
+          defaultSlots[slot - 1] = {
             slot,
+            account,
             isEmpty: false,
-            account: null // Account will be loaded on demand
-          };
-        } else {
-          return {
-            slot,
-            isEmpty: true,
-            account: null
+            deviceId
           };
         }
-      });
+      }
+      
+      // Store device accounts mapping
+      await this.storeDeviceAccountsMapping(deviceId, defaultSlots);
+      
+      return defaultSlots;
     } catch (error) {
-      console.error('Error getting device accounts:', error);
-      return ACCOUNT_SLOTS.map(slot => ({
-        slot,
-        isEmpty: true,
-        account: null
-      }));
+      console.error('Error loading device accounts:', error);
+      return defaultSlots;
     }
   }
-
-  public static async createAccountOnDevice(
-    name: string, 
-    dob: string, 
-    password: string,
-    symbol?: string
-  ): Promise<{ account: UserAccount; slot: number }> {
-    try {
-      const deviceId = await getBulletproofDeviceId();
-      const accounts = await this.getDeviceAccounts();
-      
-      // Find first empty slot
-      const emptySlot = accounts.find(acc => acc.isEmpty);
-      if (!emptySlot) {
-        throw new Error('No available account slots on this device');
-      }
-
-      // Check if we already have 3 accounts
-      const occupiedSlots = accounts.filter(acc => !acc.isEmpty).length;
-      if (occupiedSlots >= 3) {
-        throw new Error('Maximum 3 accounts per device limit reached');
-      }
-
-      // Generate account
-      const account = generateUserAccount(name, dob);
-      
-      // Add symbol if provided
-      if (symbol) {
-        account.symbol = symbol;
-      }
-
-      // Create encrypted storage entry
-      const encryptedData = await this.encryptAccountData(account, password);
-      
-      // Store in device accounts
-      const deviceAccounts = await this.getStoredDeviceAccounts() || {};
-      if (!deviceAccounts[deviceId]) {
-        deviceAccounts[deviceId] = {};
-      }
-      
-      deviceAccounts[deviceId][emptySlot.slot] = {
-        encryptedData,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-        deviceFingerprint: deviceId
-      };
-
-      await this.storeDeviceAccounts(deviceAccounts);
-      
-      console.log(`Account created in slot ${emptySlot.slot} for device ${deviceId}`);
-      
-      return { account, slot: emptySlot.slot };
-    } catch (error) {
-      console.error('Error creating account on device:', error);
-      throw error;
+  
+  static async createAccountOnDevice(name: string, dob: string, password: string): Promise<{ account: UserAccount; slot: number }> {
+    const deviceId = await getBulletproofDeviceId();
+    const currentAccounts = await this.getDeviceAccounts();
+    
+    // Find first empty slot
+    const emptySlot = currentAccounts.find(slot => slot.isEmpty);
+    if (!emptySlot) {
+      throw new Error(`Device limit reached. Maximum ${this.MAX_ACCOUNTS_PER_DEVICE} accounts per device.`);
     }
+    
+    // Create account in the empty slot
+    const manager = new DataPersistenceManager(emptySlot.slot);
+    const timestamp = Date.now();
+    
+    const account: UserAccount = {
+      id: `${timestamp}_${deviceId.slice(0, 8)}_${Math.random().toString(36).substr(2, 4)}`,
+      name,
+      dob,
+      passwordHash: await this.hashPassword(password, deviceId),
+      slot: emptySlot.slot,
+      deviceFingerprint: deviceId,
+      createdAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+      avatar: this.generateAvatar(),
+      chantingStats: {}
+    };
+    
+    // Store account
+    await manager.storeData('account', account);
+    
+    // Update device accounts mapping
+    const updatedAccounts = await this.getDeviceAccounts();
+    await this.storeDeviceAccountsMapping(deviceId, updatedAccounts);
+    
+    return { account, slot: emptySlot.slot };
   }
-
-  public static async importAccountToDevice(qrData: string): Promise<{ account: UserAccount; slot: number }> {
+  
+  static async switchToAccount(slot: number, password: string): Promise<UserAccount> {
+    const deviceId = await getBulletproofDeviceId();
+    const manager = new DataPersistenceManager(slot);
+    const account = await manager.getData('account');
+    
+    if (!account) {
+      throw new Error('Account not found');
+    }
+    
+    if (account.deviceFingerprint !== deviceId) {
+      throw new Error('Account does not belong to this device');
+    }
+    
+    // Verify password
+    const isValid = await this.verifyPassword(password, account.passwordHash || '', deviceId);
+    if (!isValid) {
+      throw new Error('Invalid password');
+    }
+    
+    // Update last login
+    account.lastLogin = new Date().toISOString();
+    await manager.storeData('account', account);
+    
+    // Set as current account
+    await this.setCurrentAccount(account);
+    
+    return account;
+  }
+  
+  static async importAccountToDevice(qrData: string): Promise<{ account: UserAccount; slot: number }> {
+    const deviceId = await getBulletproofDeviceId();
+    const currentAccounts = await this.getDeviceAccounts();
+    
+    // Find empty slot
+    const emptySlot = currentAccounts.find(slot => slot.isEmpty);
+    if (!emptySlot) {
+      throw new Error(`Device limit reached. Maximum ${this.MAX_ACCOUNTS_PER_DEVICE} accounts per device.`);
+    }
+    
     try {
-      const deviceId = await getBulletproofDeviceId();
-      const accounts = await this.getDeviceAccounts();
-      
-      // Find first empty slot
-      const emptySlot = accounts.find(acc => acc.isEmpty);
-      if (!emptySlot) {
-        throw new Error('No available account slots on this device');
-      }
-
-      // Check if we already have 3 accounts
-      const occupiedSlots = accounts.filter(acc => !acc.isEmpty).length;
-      if (occupiedSlots >= 3) {
-        throw new Error('Maximum 3 accounts per device limit reached');
-      }
-
       // Decode QR data
-      const qrJson = atob(qrData);
-      const qrAccount = JSON.parse(qrJson);
-      const { account, password } = qrAccount;
-
-      // Create encrypted storage entry
-      const encryptedData = await this.encryptAccountData(account, password);
+      const decoded = atob(qrData);
+      const importData = JSON.parse(decoded);
       
-      // Store in device accounts
-      const deviceAccounts = await this.getStoredDeviceAccounts() || {};
-      if (!deviceAccounts[deviceId]) {
-        deviceAccounts[deviceId] = {};
+      if (!importData.account || !importData.version) {
+        throw new Error('Invalid QR code format');
       }
       
-      deviceAccounts[deviceId][emptySlot.slot] = {
-        encryptedData,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-        deviceFingerprint: deviceId
-      };
-
-      await this.storeDeviceAccounts(deviceAccounts);
+      const account = importData.account;
       
-      console.log(`Account imported to slot ${emptySlot.slot} for device ${deviceId}`);
+      // Update account for this device
+      account.slot = emptySlot.slot;
+      account.deviceFingerprint = deviceId;
+      account.lastLogin = new Date().toISOString();
+      
+      // Store in the empty slot
+      const manager = new DataPersistenceManager(emptySlot.slot);
+      await manager.storeData('account', account);
+      
+      // Update device accounts mapping
+      const updatedAccounts = await this.getDeviceAccounts();
+      await this.storeDeviceAccountsMapping(deviceId, updatedAccounts);
       
       return { account, slot: emptySlot.slot };
     } catch (error) {
-      console.error('Error importing account to device:', error);
-      throw error;
+      throw new Error('Failed to import account from QR code');
     }
   }
-
-  public static async switchToAccount(slot: number, password: string): Promise<UserAccount> {
+  
+  static async getCurrentAccount(): Promise<UserAccount | null> {
     try {
-      const deviceId = await getBulletproofDeviceId();
-      const storedAccounts = await this.getStoredDeviceAccounts() || {};
-      const deviceAccounts = storedAccounts[deviceId] || {};
-      const accountData = deviceAccounts[slot];
-
-      if (!accountData) {
-        throw new Error('No account found in this slot');
+      const globalManager = new DataPersistenceManager(1);
+      const globalCurrent = await globalManager.getData('globalCurrentAccount');
+      
+      if (globalCurrent?.account) {
+        const deviceId = await getBulletproofDeviceId();
+        
+        // Verify account belongs to this device
+        if (globalCurrent.account.deviceFingerprint === deviceId) {
+          return globalCurrent.account;
+        }
       }
-
-      // Check lockout status
-      if (this.checkLockoutStatus(slot)) {
-        throw new Error('Account is temporarily locked. Please try again later.');
-      }
-
-      // Decrypt account data
-      const account = await this.decryptAccountData(accountData.encryptedData, password);
-
-      // Update last login
-      accountData.lastLogin = new Date().toISOString();
-      await this.storeDeviceAccounts(storedAccounts);
-
-      // Clear login attempts on successful login
-      await this.clearLoginAttempts(slot);
-      await this.clearAccountLockout(slot);
-
-      // Store current account
-      localStorage.setItem('current_authenticated_account', JSON.stringify(account));
-
-      // Notify other tabs
-      if ('BroadcastChannel' in window) {
-        const channel = new BroadcastChannel('mantra-verse-auth');
-        channel.postMessage({ type: 'auth-change', account });
-        channel.close();
-      }
-
-      return account;
-    } catch (error: any) {
-      const attempts = await this.getLoginAttempts(slot);
-      const newAttempts = attempts + 1;
-      await this.setLoginAttempts(slot, newAttempts);
-
-      if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
-        await this.setAccountLockout(slot);
-        await this.clearLoginAttempts(slot); // Clear attempts after lockout
-        throw new Error('Account locked due to too many failed login attempts.');
-      }
-
-      console.error('Error switching to account:', error);
-      throw new Error('Invalid password. Please try again.');
-    }
-  }
-
-  public static async getCurrentAccount(): Promise<UserAccount | null> {
-    try {
-      const accountJson = localStorage.getItem('current_authenticated_account');
-      return accountJson ? JSON.parse(accountJson) : null;
+      
+      return null;
     } catch (error) {
       console.error('Error getting current account:', error);
       return null;
     }
   }
-
-  public static async clearCurrentAccount(): Promise<void> {
+  
+  static async setCurrentAccount(account: UserAccount): Promise<void> {
+    const globalManager = new DataPersistenceManager(1);
+    await globalManager.storeData('globalCurrentAccount', { 
+      account, 
+      timestamp: Date.now(),
+      deviceId: await getBulletproofDeviceId()
+    });
+    
+    // Store in multiple places for bulletproof persistence
+    localStorage.setItem('current_authenticated_account', JSON.stringify(account));
+    sessionStorage.setItem('current_authenticated_account', JSON.stringify(account));
+    
+    // Broadcast to other tabs
+    if ('BroadcastChannel' in window) {
+      const channel = new BroadcastChannel('mantra-verse-auth');
+      channel.postMessage({ type: 'auth-change', account });
+      channel.close();
+    }
+  }
+  
+  static async clearCurrentAccount(): Promise<void> {
+    const globalManager = new DataPersistenceManager(1);
+    await globalManager.storeData('globalCurrentAccount', null);
+    
     localStorage.removeItem('current_authenticated_account');
-
-    // Notify other tabs
+    sessionStorage.removeItem('current_authenticated_account');
+    
+    // Broadcast to other tabs
     if ('BroadcastChannel' in window) {
       const channel = new BroadcastChannel('mantra-verse-auth');
       channel.postMessage({ type: 'auth-change', account: null });
       channel.close();
     }
   }
-
-  public static async removeAccountFromDevice(slot: number): Promise<void> {
+  
+  private static async storeDeviceAccountsMapping(deviceId: string, accounts: DeviceAccountSlot[]): Promise<void> {
+    const mapping = {
+      deviceId,
+      accounts: accounts.map(acc => ({
+        slot: acc.slot,
+        hasAccount: !acc.isEmpty,
+        accountId: acc.account?.id || null
+      })),
+      lastUpdated: Date.now()
+    };
+    
+    // Store in multiple places
+    localStorage.setItem(`${this.DEVICE_ACCOUNTS_KEY}_${deviceId}`, JSON.stringify(mapping));
+    
     try {
-      const deviceId = await getBulletproofDeviceId();
-      const storedAccounts = await this.getStoredDeviceAccounts() || {};
-
-      if (storedAccounts[deviceId] && storedAccounts[deviceId][slot]) {
-        delete storedAccounts[deviceId][slot];
-        await this.storeDeviceAccounts(storedAccounts);
-        console.log(`Account removed from slot ${slot} for device ${deviceId}`);
-      } else {
-        console.warn(`No account found in slot ${slot} for device ${deviceId}`);
-      }
-    } catch (error) {
-      console.error('Error removing account from device:', error);
+      await BulletproofStorage.storeDeviceId(deviceId, { accountsMapping: mapping });
+    } catch (e) {
+      console.warn('Failed to store device accounts mapping:', e);
     }
   }
-}
-
-function generateUserAccount(name: string, dob: string): UserAccount {
-  return {
-    id: uuidv4(),
-    name: name,
-    dob: dob,
-    createdAt: new Date().toISOString(),
-    lastLogin: new Date().toISOString(),
-    chantingStats: {},
-    slot: undefined,
-    deviceFingerprint: undefined
-  };
+  
+  private static async hashPassword(password: string, salt: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + salt);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  
+  private static async verifyPassword(password: string, hash: string, salt: string): Promise<boolean> {
+    const newHash = await this.hashPassword(password, salt);
+    return newHash === hash;
+  }
+  
+  private static generateAvatar(): string {
+    const avatars = ['🕉️', '🧘', '🪷', '🕯️', '📿', '⚡', '🌟', '🔱', '☀️', '🌙'];
+    return avatars[Math.floor(Math.random() * avatars.length)];
+  }
 }
