@@ -1,9 +1,4 @@
-
-import { getData, storeData, getAllData } from './indexedDBUtils';
-
-const STORES = {
-  activity: "activityData"
-};
+import { getData, storeData, getAllData, STORES } from './indexedDBUtils';
 
 export interface DailyActivity {
   date: string;
@@ -25,7 +20,7 @@ export const recordDailyActivity = async (count: number = 1): Promise<void> => {
   
   try {
     // Get existing activity for today
-    const existingActivity = await getData(STORES.activity, today);
+    const existingActivity = await getData(STORES.activityData, today);
     const currentCount = existingActivity ? existingActivity.count : 0;
     
     // Update activity count
@@ -35,7 +30,7 @@ export const recordDailyActivity = async (count: number = 1): Promise<void> => {
       timestamp: Date.now()
     };
     
-    await storeData(STORES.activity, activityData, today);
+    await storeData(STORES.activityData, activityData, today);
   } catch (error) {
     console.error("Failed to record daily activity:", error);
   }
@@ -46,7 +41,7 @@ export const recordDailyActivity = async (count: number = 1): Promise<void> => {
  */
 export const getActivityData = async (): Promise<{[date: string]: number}> => {
   try {
-    const allActivity = await getAllData(STORES.activity);
+    const allActivity = await getAllData(STORES.activityData);
     const activityMap: {[date: string]: number} = {};
     
     allActivity.forEach((activity: DailyActivity) => {

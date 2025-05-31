@@ -1,6 +1,12 @@
+
 import { AccountDataManager } from './accountDataManager';
 
 let db: IDBDatabase | null = null;
+
+export const STORES = {
+  activityData: "activityData",
+  counts: "counts"
+};
 
 export const initializeDatabase = (): Promise<void> => {
   return new Promise((resolve, reject) => {
@@ -113,4 +119,124 @@ export const updateMantraCount = async (count: number): Promise<void> => {
     console.error('Error updating mantra count:', error);
     throw error;
   }
+};
+
+// Fixed function name and return type
+export const updateMantraCounts = async (incrementBy: number = 1): Promise<{ lifetimeCount: number; todayCount: number }> => {
+  try {
+    // Get current counts
+    const currentLifetime = await getLifetimeCount();
+    const currentToday = await getTodayCount();
+    
+    // Update lifetime count
+    const newLifetime = currentLifetime + incrementBy;
+    await AccountDataManager.storeAccountData('mantraCount', newLifetime);
+    
+    // Update today's count
+    const today = new Date().toDateString();
+    const dailyData = await AccountDataManager.getAccountData<any>('dailyProgress') || {};
+    const newToday = (dailyData[today] || 0) + incrementBy;
+    dailyData[today] = newToday;
+    await AccountDataManager.storeAccountData('dailyProgress', dailyData);
+    
+    console.log(`Updated mantra counts: lifetime=${newLifetime}, today=${newToday}`);
+    return { lifetimeCount: newLifetime, todayCount: newToday };
+  } catch (error) {
+    console.error('Error updating mantra counts:', error);
+    throw error;
+  }
+};
+
+// Legacy compatibility functions
+export const getUserData = () => {
+  const userData = localStorage.getItem('chantTrackerUserData');
+  return userData ? JSON.parse(userData) : null;
+};
+
+export const saveUserData = (userData: any) => {
+  localStorage.setItem('chantTrackerUserData', JSON.stringify(userData));
+};
+
+export const logoutUser = () => {
+  localStorage.removeItem('chantTrackerUserData');
+};
+
+export const isUserLoggedIn = (): boolean => {
+  return localStorage.getItem('chantTrackerUserData') !== null;
+};
+
+export const getItem = (key: string) => {
+  return localStorage.getItem(key);
+};
+
+export const setItem = (key: string, value: string) => {
+  localStorage.setItem(key, value);
+};
+
+export const removeItem = (key: string) => {
+  localStorage.removeItem(key);
+};
+
+// Generic IndexedDB functions
+export const getData = async (storeName: string, key: string): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject('Database not initialized');
+      return;
+    }
+
+    const transaction = db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
+    const request = store.get(key);
+
+    request.onsuccess = () => {
+      resolve(request.result);
+    };
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+  });
+};
+
+export const storeData = async (storeName: string, data: any, key?: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject('Database not initialized');
+      return;
+    }
+
+    const transaction = db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = key ? store.put(data, key) : store.add(data);
+
+    request.onsuccess = () => {
+      resolve();
+    };
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+  });
+};
+
+export const getAllData = async (storeName: string): Promise<any[]> => {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject('Database not initialized');
+      return;
+    }
+
+    const transaction = db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+      resolve(request.result);
+    };
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+  });
 };

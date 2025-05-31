@@ -12,6 +12,7 @@ import {
   getLifetimeCount,
   getTodayCount,
   getAllData,
+  storeData,
   STORES
 } from './indexedDBUtils';
 
@@ -126,7 +127,6 @@ export const importAccountFromID = async (embeddedId: string): Promise<boolean> 
     
     // Restore activity data if available
     if (userData.activityData && Array.isArray(userData.activityData)) {
-      const { storeData } = await import('./indexedDBUtils');
       for (const activity of userData.activityData) {
         await storeData(STORES.activityData, activity);
       }
