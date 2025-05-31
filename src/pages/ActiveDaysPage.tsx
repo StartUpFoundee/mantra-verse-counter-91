@@ -1,30 +1,23 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, Flame, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getActivityData, getStreakData } from "@/utils/activityUtils";
+import { getActivityData, getStreakData, DailyActivity, StreakData, getCategoryByCount } from "@/utils/activityUtils";
 import ModernCard from "@/components/ModernCard";
-
-interface ActivityData {
-  [date: string]: number;
-}
-
-interface StreakData {
-  currentStreak: number;
-  maxStreak: number;
-  totalActiveDays: number;
-}
+import CategoryDisplay from "@/components/CategoryDisplay";
 
 const ActiveDaysPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activityData, setActivityData] = useState<ActivityData>({});
+  const [activityData, setActivityData] = useState<{[date: string]: DailyActivity}>({});
   const [streakData, setStreakData] = useState<StreakData>({
     currentStreak: 0,
     maxStreak: 0,
-    totalActiveDays: 0
+    totalActiveDays: 0,
+    currentCategory: 'beginner',
+    highestCategory: 'beginner',
+    categoryDistribution: {}
   });
-  const [hoveredDay, setHoveredDay] = useState<{date: string, count: number} | null>(null);
+  const [hoveredDay, setHoveredDay] = useState<{date: string, activity: DailyActivity} | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -39,10 +32,12 @@ const ActiveDaysPage: React.FC = () => {
 
   const getActivityLevel = (count: number): string => {
     if (count === 0) return "bg-gray-200/50 dark:bg-gray-700/50";
-    if (count <= 20) return "bg-emerald-200/70 dark:bg-emerald-800/50";
-    if (count <= 50) return "bg-emerald-300/80 dark:bg-emerald-700/60";
-    if (count <= 100) return "bg-emerald-400/90 dark:bg-emerald-600/70";
-    return "bg-emerald-500 dark:bg-emerald-500";
+    if (count <= 108) return "bg-emerald-200/70 dark:bg-emerald-800/50";
+    if (count <= 500) return "bg-pink-300/80 dark:bg-pink-700/60";
+    if (count <= 1000) return "bg-orange-300/80 dark:bg-orange-700/60";
+    if (count <= 1500) return "bg-yellow-400/90 dark:bg-yellow-600/70";
+    if (count <= 2100) return "bg-red-400/90 dark:bg-red-600/70";
+    return "bg-purple-500 dark:bg-purple-500";
   };
 
   const generateCalendarData = () => {
@@ -55,12 +50,13 @@ const ActiveDaysPage: React.FC = () => {
     
     while (currentDay <= today) {
       const dateStr = currentDay.toISOString().split('T')[0];
-      const count = activityData[dateStr] || 0;
+      const activity = activityData[dateStr];
+      const count = activity?.count || 0;
       const isToday = dateStr === today.toISOString().split('T')[0];
       
       days.push({
         date: dateStr,
-        count,
+        activity: activity || { date: dateStr, count: 0, timestamp: 0 },
         isToday,
         dayOfWeek: currentDay.getDay(),
         month: currentDay.getMonth(),
@@ -95,7 +91,7 @@ const ActiveDaysPage: React.FC = () => {
           Back to Home
         </Button>
         <h1 className="text-2xl lg:text-3xl xl:text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent text-center">
-          Active Days
+          Active Days & Achievements
         </h1>
         <div className="w-28"></div>
       </div>
@@ -142,6 +138,15 @@ const ActiveDaysPage: React.FC = () => {
         </ModernCard>
       </div>
 
+      {/* Category Display */}
+      <div className="max-w-6xl mx-auto mb-8 lg:mb-12">
+        <CategoryDisplay 
+          currentCategory={streakData.currentCategory}
+          highestCategory={streakData.highestCategory}
+          categoryDistribution={streakData.categoryDistribution}
+        />
+      </div>
+
       {/* Calendar Grid */}
       <div className="max-w-6xl mx-auto">
         <ModernCard className="p-6 lg:p-8 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-xl border-amber-200/50 dark:border-amber-700/50" gradient>
@@ -150,14 +155,14 @@ const ActiveDaysPage: React.FC = () => {
               <Calendar className="w-6 h-6 lg:w-7 lg:h-7 text-amber-600 dark:text-amber-400" />
               <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Activity Calendar</h2>
             </div>
-            <p className="text-gray-600 dark:text-gray-400">Your spiritual practice journey over the past year</p>
+            <p className="text-gray-600 dark:text-gray-400">Your spiritual practice journey over the past year with achievement levels</p>
           </div>
 
           <div className="space-y-4">
             {/* Weekday Labels */}
             <div className="flex gap-1 lg:gap-2 ml-12 lg:ml-16">
               {weekdays.map((day) => (
-                <div key={day} className="w-3 h-3 lg:w-4 lg:h-4 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center">
+                <div key={day} className="w-4 h-4 lg:w-5 lg:h-5 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center">
                   {day[0]}
                 </div>
               ))}
@@ -178,48 +183,64 @@ const ActiveDaysPage: React.FC = () => {
                   
                   {Array.from({ length: 7 }, (_, dayIndex) => {
                     const dayData = calendarDays[weekIndex * 7 + dayIndex];
-                    if (!dayData) return <div key={dayIndex} className="w-3 h-3 lg:w-4 lg:h-4"></div>;
+                    if (!dayData) return <div key={dayIndex} className="w-4 h-4 lg:w-5 lg:h-5"></div>;
+                    
+                    const category = dayData.activity.count > 0 ? getCategoryByCount(dayData.activity.count) : null;
                     
                     return (
                       <div
                         key={dayIndex}
-                        className={`w-3 h-3 lg:w-4 lg:h-4 rounded-sm cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative ${
-                          getActivityLevel(dayData.count)
+                        className={`w-4 h-4 lg:w-5 lg:h-5 rounded-sm cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative flex items-center justify-center text-xs ${
+                          getActivityLevel(dayData.activity.count)
                         } ${dayData.isToday ? 'ring-2 ring-amber-500' : ''}`}
                         onMouseEnter={(e) => {
-                          setHoveredDay({ date: dayData.date, count: dayData.count });
+                          setHoveredDay({ date: dayData.date, activity: dayData.activity });
                           handleMouseMove(e);
                         }}
                         onMouseMove={handleMouseMove}
                         onMouseLeave={() => setHoveredDay(null)}
-                      />
+                      >
+                        {category && dayData.activity.count > 0 && (
+                          <span className="text-[8px] lg:text-[10px]">{category.icon}</span>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
               ))}
             </div>
 
-            {/* Legend */}
-            <div className="flex items-center gap-2 lg:gap-3 text-xs lg:text-sm text-gray-500 dark:text-gray-400 justify-center">
-              <span>Less</span>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-gray-200/50 dark:bg-gray-700/50 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-200/70 dark:bg-emerald-800/50 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-300/80 dark:bg-emerald-700/60 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-400/90 dark:bg-emerald-600/70 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-500 dark:bg-emerald-500 rounded-sm"></div>
-              <span>More</span>
+            {/* Enhanced Legend */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 lg:gap-3 text-xs lg:text-sm text-gray-500 dark:text-gray-400 justify-center">
+                <span>Activity Level:</span>
+                <div className="w-3 h-3 lg:w-4 lg:h-4 bg-gray-200/50 dark:bg-gray-700/50 rounded-sm"></div>
+                <span>None</span>
+                <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-200/70 dark:bg-emerald-800/50 rounded-sm"></div>
+                <span>Seeker</span>
+                <div className="w-3 h-3 lg:w-4 lg:h-4 bg-pink-300/80 dark:bg-pink-700/60 rounded-sm"></div>
+                <span>Devoted</span>
+                <div className="w-3 h-3 lg:w-4 lg:h-4 bg-orange-300/80 dark:bg-orange-700/60 rounded-sm"></div>
+                <span>Committed</span>
+                <div className="w-3 h-3 lg:w-4 lg:h-4 bg-yellow-400/90 dark:bg-yellow-600/70 rounded-sm"></div>
+                <span>Enlightened</span>
+                <div className="w-3 h-3 lg:w-4 lg:h-4 bg-red-400/90 dark:bg-red-600/70 rounded-sm"></div>
+                <span>Sage</span>
+                <div className="w-3 h-3 lg:w-4 lg:h-4 bg-purple-500 dark:bg-purple-500 rounded-sm"></div>
+                <span>Transcendent</span>
+              </div>
             </div>
           </div>
         </ModernCard>
       </div>
 
-      {/* Tooltip */}
+      {/* Enhanced Tooltip */}
       {hoveredDay && (
         <div
-          className="fixed z-50 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-amber-200/50 dark:border-amber-700/50 rounded-xl px-4 py-3 text-sm pointer-events-none shadow-xl"
+          className="fixed z-50 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-amber-200/50 dark:border-amber-700/50 rounded-xl px-4 py-3 text-sm pointer-events-none shadow-xl max-w-xs"
           style={{
             left: mousePosition.x + 10,
-            top: mousePosition.y - 50,
+            top: mousePosition.y - 70,
           }}
         >
           <div className="text-gray-900 dark:text-white font-medium mb-1">
@@ -230,9 +251,17 @@ const ActiveDaysPage: React.FC = () => {
               year: 'numeric'
             })}
           </div>
-          <div className="text-amber-600 dark:text-amber-400">
-            {hoveredDay.count} jaaps completed
+          <div className="text-amber-600 dark:text-amber-400 mb-1">
+            {hoveredDay.activity.count} jaaps completed
           </div>
+          {hoveredDay.activity.count > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{hoveredDay.activity.icon}</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">
+                {getCategoryByCount(hoveredDay.activity.count).name} Level
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
