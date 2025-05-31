@@ -89,7 +89,8 @@ const getEnhancedCanvasFingerprint = (): string => {
 const getEnhancedWebGLFingerprint = (): string => {
   try {
     const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    const gl = canvas.getContext('webgl') as WebGLRenderingContext | null || 
+               canvas.getContext('experimental-webgl') as WebGLRenderingContext | null;
     if (!gl) return 'no-webgl';
 
     const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
@@ -291,16 +292,16 @@ const getBrowserFeaturesFingerprint = (): string => {
 
 // Performance characteristics
 const getPerformanceFingerprint = (): string => {
-  if (!performance.memory) {
+  const performanceMemory = (performance as any).memory;
+  if (!performanceMemory) {
     return 'no-memory-info';
   }
   
-  const memory = performance.memory as any;
   return [
-    memory.usedJSHeapSize || 0,
-    memory.totalJSHeapSize || 0,
-    memory.jsHeapSizeLimit || 0,
-    navigator.deviceMemory || 0
+    performanceMemory.usedJSHeapSize || 0,
+    performanceMemory.totalJSHeapSize || 0,
+    performanceMemory.jsHeapSizeLimit || 0,
+    (navigator as any).deviceMemory || 0
   ].join('|');
 };
 
@@ -524,6 +525,13 @@ export class BulletproofStorage {
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         const db = request.result;
+        
+        // Check if the object store exists before creating transaction
+        if (!db.objectStoreNames.contains('device')) {
+          resolve(); // Skip if store doesn't exist
+          return;
+        }
+        
         const transaction = db.transaction(['device'], 'readwrite');
         const store = transaction.objectStore('device');
         store.put({ id: 'primary', deviceId, data, timestamp: Date.now() });
@@ -541,12 +549,19 @@ export class BulletproofStorage {
   }
   
   private static async getFromIndexedDB(): Promise<any> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const request = indexedDB.open('BulletproofDeviceDB', 1);
       
       request.onerror = () => resolve(null);
       request.onsuccess = () => {
         const db = request.result;
+        
+        // Check if the object store exists before creating transaction
+        if (!db.objectStoreNames.contains('device')) {
+          resolve(null);
+          return;
+        }
+        
         const transaction = db.transaction(['device'], 'readonly');
         const store = transaction.objectStore('device');
         const getRequest = store.get('primary');
