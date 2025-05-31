@@ -10,6 +10,8 @@ export interface UserAccount {
   symbol?: string; // Add symbol property for spiritual icons
   slot?: number;
   deviceFingerprint?: string;
+  passwordHash?: string; // Add back for compatibility
+  avatar?: string; // Add back for compatibility
 }
 
 export interface QRAccountData {
