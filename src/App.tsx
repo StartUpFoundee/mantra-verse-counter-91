@@ -14,12 +14,12 @@ import ActiveDaysPage from "./pages/ActiveDaysPage";
 import NotFound from "./pages/NotFound";
 import IdentitySystem from "./components/IdentitySystem";
 import { initializeDatabase } from "./utils/indexedDBUtils";
-import { useAccountAuth } from "./hooks/useAccountAuth";
+import { useBulletproofAuth } from "./hooks/useBulletproofAuth";
 
 const queryClient = new QueryClient();
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, isLoading, currentUser } = useAccountAuth();
+  const { isAuthenticated, isLoading, currentUser, deviceId } = useBulletproofAuth();
   const [dbInitialized, setDbInitialized] = useState(false);
   const [initializing, setInitializing] = useState(true);
 
@@ -49,7 +49,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
         <div className="mb-6 text-amber-600 dark:text-amber-400 text-xl font-medium">
-          {!dbInitialized ? 'Initializing database...' : 'Restoring your session...'}
+          {!dbInitialized ? 'Initializing database...' : 'Identifying your device...'}
         </div>
         <div className="relative">
           <div className="w-16 h-16 border-4 border-amber-200 dark:border-amber-800 rounded-full animate-spin"></div>
@@ -58,6 +58,11 @@ const AppContent: React.FC = () => {
         {currentUser && (
           <div className="mt-4 text-sm text-gray-600 dark:text-gray-300">
             Welcome back, {currentUser.name}
+          </div>
+        )}
+        {deviceId && (
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 font-mono">
+            Device: {deviceId}
           </div>
         )}
       </div>
