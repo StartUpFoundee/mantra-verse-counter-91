@@ -289,8 +289,12 @@ export const getUserData = () => {
   // Start async fetch from IndexedDB (which will be used next time)
   if (userData) {
     const parsedData = JSON.parse(userData);
-    // This is async but we don't wait for it
-    getDBUserData().catch(console.error);
+    // This is async but we don't wait for it - just trigger it
+    getDBUserData().then(() => {
+      // Success - data synced
+    }).catch((error) => {
+      console.error('Failed to sync with IndexedDB:', error);
+    });
     return parsedData;
   }
   
@@ -306,8 +310,12 @@ export const saveUserData = async (userData: any) => {
   const updatedUserData = { ...userData, id: embeddedId };
   
   localStorage.setItem('chantTrackerUserData', JSON.stringify(updatedUserData));
-  // Async save to IndexedDB
-  saveDBUserData(updatedUserData).catch(console.error);
+  // Async save to IndexedDB - fire and forget
+  saveDBUserData(updatedUserData).then(() => {
+    // Success - data saved to IndexedDB
+  }).catch((error) => {
+    console.error('Failed to save to IndexedDB:', error);
+  });
 };
 
 /**
@@ -315,8 +323,12 @@ export const saveUserData = async (userData: any) => {
  */
 export const logoutUser = () => {
   localStorage.removeItem('chantTrackerUserData');
-  // Async logout from IndexedDB
-  logoutDBUser().catch(console.error);
+  // Async logout from IndexedDB - fire and forget
+  logoutDBUser().then(() => {
+    // Success - logged out from IndexedDB
+  }).catch((error) => {
+    console.error('Failed to logout from IndexedDB:', error);
+  });
 };
 
 /**
