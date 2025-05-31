@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { UserAccount } from '@/utils/advancedIdUtils';
 import { DeviceAccountManager } from '@/utils/deviceAccountManager';
@@ -91,12 +90,12 @@ export const useBulletproofAuth = () => {
       // Get bulletproof device ID
       const deviceId = await getBulletproofDeviceId();
       
-      // Check for current account
-      const currentAccount = await DeviceAccountManager.getCurrentAccount();
+      // DO NOT auto-login - always require password entry
+      // Just check if we have device accounts but don't authenticate
       
       setAuthState({
-        isAuthenticated: !!currentAccount,
-        currentUser: currentAccount,
+        isAuthenticated: false, // Never auto-authenticate
+        currentUser: null,
         isLoading: false,
         deviceId
       });
@@ -147,15 +146,12 @@ export const useBulletproofAuth = () => {
     }
   };
 
-  const createAccount = async (name: string, dob: string, password: string): Promise<UserAccount> => {
+  const createAccount = async (name: string, dob: string, password: string, symbol?: string): Promise<UserAccount> => {
     try {
-      const { account } = await DeviceAccountManager.createAccountOnDevice(name, dob, password);
+      const { account } = await DeviceAccountManager.createAccountOnDevice(name, dob, password, symbol);
       
-      setAuthState(prev => ({
-        ...prev,
-        isAuthenticated: true,
-        currentUser: account
-      }));
+      // DO NOT auto-login after account creation
+      // User should go back to account selector and enter password
       
       return account;
     } catch (error) {

@@ -12,7 +12,6 @@ import {
   Calendar, 
   Upload, 
   QrCode, 
-  Camera,
   FileText,
   AlertCircle,
   Shield,
@@ -22,6 +21,7 @@ import { useBulletproofAccountManager } from '@/hooks/useBulletproofAccountManag
 import { useBulletproofAuth } from '@/hooks/useBulletproofAuth';
 import { toast } from '@/components/ui/sonner';
 import { format } from 'date-fns';
+import { spiritualIcons } from '@/utils/spiritualIdUtils';
 
 interface BulletproofAccountSelectorProps {
   onCreateAccount: (slot: number) => void;
@@ -48,6 +48,11 @@ const BulletproofAccountSelector: React.FC<BulletproofAccountSelectorProps> = ({
       .slice(0, 2);
   };
 
+  const getSpiritualSymbol = (symbolId: string): string => {
+    const icon = spiritualIcons.find(icon => icon.id === symbolId);
+    return icon?.symbol || '🕉️';
+  };
+
   const handleImportAccount = () => {
     if (hasMaxAccounts()) {
       toast.error('Device limit reached. Maximum 3 accounts per device.');
@@ -68,7 +73,6 @@ const BulletproofAccountSelector: React.FC<BulletproofAccountSelectorProps> = ({
       toast.success('Account imported successfully!');
       setShowImportDialog(false);
       setQrData('');
-      // Refresh the page to show the new account
       window.location.reload();
     } catch (error) {
       toast.error('Failed to import account. Please check your QR code.');
@@ -85,16 +89,13 @@ const BulletproofAccountSelector: React.FC<BulletproofAccountSelectorProps> = ({
     reader.onload = (e) => {
       const result = e.target?.result as string;
       try {
-        // Try to parse as JSON first
         const parsed = JSON.parse(result);
         if (parsed.account) {
-          // This is export data, encode it back to QR format
           setQrData(btoa(result));
         } else {
           setQrData(result);
         }
       } catch {
-        // Assume it's already encoded QR data
         setQrData(result);
       }
     };
@@ -186,8 +187,8 @@ const BulletproofAccountSelector: React.FC<BulletproofAccountSelectorProps> = ({
                 <CardContent className="p-6">
                   <div className="flex items-center gap-3 mb-4">
                     <Avatar className="w-12 h-12">
-                      <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold text-lg">
-                        {accountSlot.account?.avatar || getInitials(accountSlot.account?.name || '')}
+                      <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold text-2xl">
+                        {accountSlot.account?.symbol ? getSpiritualSymbol(accountSlot.account.symbol) : getInitials(accountSlot.account?.name || '')}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
@@ -219,7 +220,7 @@ const BulletproofAccountSelector: React.FC<BulletproofAccountSelectorProps> = ({
                     onClick={() => onSelectAccount(accountSlot.slot)}
                     className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
                   >
-                    Continue
+                    Enter Password
                   </Button>
                 </CardContent>
               )}
