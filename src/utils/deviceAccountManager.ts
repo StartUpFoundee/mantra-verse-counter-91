@@ -1,6 +1,6 @@
-
 import { getBulletproofDeviceId, BulletproofStorage } from './enhancedDeviceFingerprint';
 import { UserAccount, DataPersistenceManager } from './advancedIdUtils';
+import { AccountDataManager } from './accountDataManager';
 
 export interface DeviceAccountSlot {
   slot: number;
@@ -64,7 +64,7 @@ export class DeviceAccountManager {
     const timestamp = Date.now();
     
     const account: UserAccount = {
-      id: `${timestamp}_${deviceId.slice(0, 8)}_${Math.random().toString(36).substr(2, 4)}`,
+      id: `${timestamp}_${deviceId.slice(0, 8)}_slot${emptySlot.slot}_${Math.random().toString(36).substr(2, 4)}`,
       name,
       dob,
       passwordHash: await this.hashPassword(password, deviceId),
@@ -78,6 +78,10 @@ export class DeviceAccountManager {
     
     // Store account
     await manager.storeData('account', account);
+    
+    // Initialize account-specific data storage
+    console.log(`Initializing account-specific storage for: ${account.id}`);
+    await this.initializeAccountData(account);
     
     // Update device accounts mapping
     const updatedAccounts = await this.getDeviceAccounts();
@@ -105,12 +109,21 @@ export class DeviceAccountManager {
       throw new Error('Invalid password');
     }
     
+    // Get current account to save its data
+    const currentAccount = await this.getCurrentAccount();
+    const currentAccountId = currentAccount?.id || null;
+    
+    // Switch account data context
+    await AccountDataManager.switchAccountContext(currentAccountId, account);
+    
     // Update last login
     account.lastLogin = new Date().toISOString();
     await manager.storeData('account', account);
     
     // Set as current account
     await this.setCurrentAccount(account);
+    
+    console.log(`Successfully switched to account: ${account.name} (${account.id})`);
     
     return account;
   }
@@ -136,6 +149,11 @@ export class DeviceAccountManager {
       
       const account = importData.account;
       
+      // Generate new unique ID for this device to prevent conflicts
+      const timestamp = Date.now();
+      const originalId = account.id;
+      account.id = `${timestamp}_${deviceId.slice(0, 8)}_slot${emptySlot.slot}_imported_${Math.random().toString(36).substr(2, 4)}`;
+      
       // Update account for this device
       account.slot = emptySlot.slot;
       account.deviceFingerprint = deviceId;
@@ -145,12 +163,23 @@ export class DeviceAccountManager {
       const manager = new DataPersistenceManager(emptySlot.slot);
       await manager.storeData('account', account);
       
+      // Initialize account-specific data storage for imported account
+      await this.initializeAccountData(account);
+      
+      // If the import data contains account-specific data, migrate it
+      if (importData.accountData) {
+        await this.migrateImportedAccountData(account.id, importData.accountData);
+      }
+      
       // Update device accounts mapping
       const updatedAccounts = await this.getDeviceAccounts();
       await this.storeDeviceAccountsMapping(deviceId, updatedAccounts);
       
+      console.log(`Successfully imported account: ${account.name} (original: ${originalId}, new: ${account.id})`);
+      
       return { account, slot: emptySlot.slot };
     } catch (error) {
+      console.error('Account import failed:', error);
       throw new Error('Failed to import account from QR code');
     }
   }
@@ -165,6 +194,8 @@ export class DeviceAccountManager {
         
         // Verify account belongs to this device
         if (globalCurrent.account.deviceFingerprint === deviceId) {
+          // Set account context for data access
+          AccountDataManager.setCurrentAccount(globalCurrent.account.id);
           return globalCurrent.account;
         }
       }
@@ -184,6 +215,9 @@ export class DeviceAccountManager {
       deviceId: await getBulletproofDeviceId()
     });
     
+    // Set account context for data access
+    AccountDataManager.setCurrentAccount(account.id);
+    
     // Store in multiple places for bulletproof persistence
     localStorage.setItem('current_authenticated_account', JSON.stringify(account));
     sessionStorage.setItem('current_authenticated_account', JSON.stringify(account));
@@ -194,11 +228,16 @@ export class DeviceAccountManager {
       channel.postMessage({ type: 'auth-change', account });
       channel.close();
     }
+    
+    console.log(`Set current account: ${account.name} (${account.id})`);
   }
   
   static async clearCurrentAccount(): Promise<void> {
     const globalManager = new DataPersistenceManager(1);
     await globalManager.storeData('globalCurrentAccount', null);
+    
+    // Clear account context
+    AccountDataManager.clearCurrentAccount();
     
     localStorage.removeItem('current_authenticated_account');
     sessionStorage.removeItem('current_authenticated_account');
@@ -208,6 +247,63 @@ export class DeviceAccountManager {
       const channel = new BroadcastChannel('mantra-verse-auth');
       channel.postMessage({ type: 'auth-change', account: null });
       channel.close();
+    }
+    
+    console.log('Cleared current account');
+  }
+  
+  /**
+   * Initialize default data for a new account
+   */
+  private static async initializeAccountData(account: UserAccount): Promise<void> {
+    try {
+      // Initialize default account-specific data
+      const defaultData = {
+        mantraCount: 0,
+        dailyGoal: 108,
+        streakCount: 0,
+        userPreferences: {
+          theme: 'light',
+          soundEnabled: true,
+          vibrationEnabled: true,
+          language: 'en'
+        },
+        chantingHistory: [],
+        spiritualStats: {
+          totalSessions: 0,
+          totalDuration: 0,
+          favoriteMantra: null
+        },
+        activeDays: [],
+        audioSettings: {
+          volume: 0.7,
+          autoplay: false
+        },
+        lastSession: null
+      };
+      
+      // Store each piece of default data with account-specific keys
+      for (const [key, value] of Object.entries(defaultData)) {
+        await AccountDataManager.storeAccountData(key, value, account.id);
+      }
+      
+      console.log(`Initialized default data for account: ${account.id}`);
+    } catch (error) {
+      console.error('Failed to initialize account data:', error);
+    }
+  }
+  
+  /**
+   * Migrate imported account data
+   */
+  private static async migrateImportedAccountData(accountId: string, importedData: any): Promise<void> {
+    try {
+      for (const [key, value] of Object.entries(importedData)) {
+        await AccountDataManager.storeAccountData(key, value, accountId);
+      }
+      console.log(`Migrated imported data for account: ${accountId}`);
+    } catch (error) {
+      console.error('Failed to migrate imported account data:', error);
     }
   }
   

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { UserAccount } from '@/utils/advancedIdUtils';
 import { DeviceAccountManager } from '@/utils/deviceAccountManager';
 import { getBulletproofDeviceId } from '@/utils/enhancedDeviceFingerprint';
+import { AccountDataManager } from '@/utils/accountDataManager';
 
 export interface BulletproofAuthState {
   isAuthenticated: boolean;
@@ -36,6 +37,8 @@ export const useBulletproofAuth = () => {
               isAuthenticated: true,
               currentUser: account
             }));
+            // Update account context for the new account
+            AccountDataManager.setCurrentAccount(account.id);
           } catch (e) {
             console.error('Error parsing auth change:', e);
           }
@@ -45,6 +48,8 @@ export const useBulletproofAuth = () => {
             isAuthenticated: false,
             currentUser: null
           }));
+          // Clear account context
+          AccountDataManager.clearCurrentAccount();
         }
       }
     };
@@ -63,12 +68,16 @@ export const useBulletproofAuth = () => {
               isAuthenticated: true,
               currentUser: event.data.account
             }));
+            // Update account context for the new account
+            AccountDataManager.setCurrentAccount(event.data.account.id);
           } else {
             setAuthState(prev => ({
               ...prev,
               isAuthenticated: false,
               currentUser: null
             }));
+            // Clear account context
+            AccountDataManager.clearCurrentAccount();
           }
         }
       };
@@ -93,6 +102,12 @@ export const useBulletproofAuth = () => {
       
       // Check for current account
       const currentAccount = await DeviceAccountManager.getCurrentAccount();
+      
+      if (currentAccount) {
+        // Set account context for data access
+        AccountDataManager.setCurrentAccount(currentAccount.id);
+        console.log(`Initialized with account context: ${currentAccount.id}`);
+      }
       
       setAuthState({
         isAuthenticated: !!currentAccount,
@@ -125,6 +140,8 @@ export const useBulletproofAuth = () => {
         isLoading: false
       }));
       
+      console.log(`Successfully logged in as: ${account.name} (${account.id})`);
+      
       return true;
     } catch (error) {
       setAuthState(prev => ({ ...prev, isLoading: false }));
@@ -134,6 +151,14 @@ export const useBulletproofAuth = () => {
 
   const logout = async () => {
     try {
+      const currentAccountId = authState.currentUser?.id;
+      
+      // Save current session data before logout
+      if (currentAccountId) {
+        console.log(`Saving session data for account: ${currentAccountId}`);
+        // This will be handled by the DeviceAccountManager.clearCurrentAccount
+      }
+      
       await DeviceAccountManager.clearCurrentAccount();
       
       setAuthState(prev => ({
@@ -141,6 +166,8 @@ export const useBulletproofAuth = () => {
         isAuthenticated: false,
         currentUser: null
       }));
+      
+      console.log('Successfully logged out');
     } catch (error) {
       console.error('Error during logout:', error);
       throw error;
@@ -157,6 +184,8 @@ export const useBulletproofAuth = () => {
         currentUser: account
       }));
       
+      console.log(`Created and logged in as new account: ${account.name} (${account.id})`);
+      
       return account;
     } catch (error) {
       throw error;
@@ -168,6 +197,8 @@ export const useBulletproofAuth = () => {
       const { account } = await DeviceAccountManager.importAccountToDevice(qrData);
       
       // Don't auto-login imported account, just return it
+      console.log(`Successfully imported account: ${account.name} (${account.id})`);
+      
       return account;
     } catch (error) {
       throw error;
