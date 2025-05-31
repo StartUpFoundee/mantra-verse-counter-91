@@ -1,5 +1,4 @@
-
-import { getData, storeData, getAllData, STORES } from './indexedDBUtils';
+import { getData, storeData, getAllData, STORES, getTodayCount } from './indexedDBUtils';
 
 export interface DailyActivity {
   date: string;
@@ -104,31 +103,65 @@ export const getCategoryById = (id: string): MantraCategory | undefined => {
 
 /**
  * Record daily activity when user completes jaaps with category tracking
+ * Updated to sync with IndexedDB counts for real-time updates
  */
 export const recordDailyActivity = async (count: number = 1): Promise<void> => {
   const today = new Date().toISOString().split('T')[0];
   
   try {
+    // Get current today's count from IndexedDB to ensure sync
+    const currentTodayCount = await getTodayCount();
+    
     // Get existing activity for today
     const existingActivity = await getData(STORES.activityData, today);
-    const currentCount = existingActivity ? existingActivity.count : 0;
-    const newTotalCount = currentCount + count;
+    
+    // Use the actual today count from IndexedDB if it's higher
+    const finalCount = Math.max(currentTodayCount, (existingActivity?.count || 0) + count);
     
     // Determine category and icon
-    const category = getCategoryByCount(newTotalCount);
+    const category = getCategoryByCount(finalCount);
     
     // Update activity count with category information
     const activityData: DailyActivity = {
       date: today,
-      count: newTotalCount,
+      count: finalCount,
       timestamp: Date.now(),
       category: category.id,
       icon: category.icon
     };
     
     await storeData(STORES.activityData, activityData, today);
+    console.log(`Updated daily activity: ${finalCount} mantras (${category.name})`);
   } catch (error) {
     console.error("Failed to record daily activity:", error);
+  }
+};
+
+/**
+ * Sync today's activity with current IndexedDB count
+ * This ensures the activity data stays in sync with fast button presses
+ */
+export const syncTodayActivity = async (): Promise<void> => {
+  const today = new Date().toISOString().split('T')[0];
+  
+  try {
+    const currentTodayCount = await getTodayCount();
+    
+    if (currentTodayCount > 0) {
+      const category = getCategoryByCount(currentTodayCount);
+      
+      const activityData: DailyActivity = {
+        date: today,
+        count: currentTodayCount,
+        timestamp: Date.now(),
+        category: category.id,
+        icon: category.icon
+      };
+      
+      await storeData(STORES.activityData, activityData, today);
+    }
+  } catch (error) {
+    console.error("Failed to sync today's activity:", error);
   }
 };
 
@@ -159,9 +192,13 @@ export const getActivityData = async (): Promise<{[date: string]: DailyActivity}
 
 /**
  * Calculate enhanced streak data with category information
+ * Updated to sync with current counts for real-time updates
  */
 export const getStreakData = async (): Promise<StreakData> => {
   try {
+    // First sync today's activity to ensure real-time updates
+    await syncTodayActivity();
+    
     const activityData = await getActivityData();
     const activities = Object.values(activityData);
     const dates = Object.keys(activityData).sort();
@@ -178,7 +215,7 @@ export const getStreakData = async (): Promise<StreakData> => {
     }
     
     // Calculate total active days
-    const totalActiveDays = dates.length;
+    const totalActiveDays = dates.filter(date => activityData[date].count > 0).length;
     
     // Calculate current streak (working backwards from today)
     const today = new Date().toISOString().split('T')[0];
@@ -204,7 +241,9 @@ export const getStreakData = async (): Promise<StreakData> => {
     let tempStreak = 0;
     let previousDate: Date | null = null;
     
-    dates.forEach(dateStr => {
+    const activeDates = dates.filter(date => activityData[date].count > 0);
+    
+    activeDates.forEach(dateStr => {
       const currentDate = new Date(dateStr);
       
       if (previousDate) {
@@ -225,10 +264,10 @@ export const getStreakData = async (): Promise<StreakData> => {
     
     maxStreak = Math.max(maxStreak, tempStreak);
     
-    // Calculate category distribution
+    // Calculate category distribution (only count days with activity)
     const categoryDistribution: {[category: string]: number} = {};
     activities.forEach(activity => {
-      if (activity.category) {
+      if (activity.category && activity.count > 0) {
         categoryDistribution[activity.category] = (categoryDistribution[activity.category] || 0) + 1;
       }
     });
@@ -270,6 +309,7 @@ export const getStreakData = async (): Promise<StreakData> => {
 
 export default {
   recordDailyActivity,
+  syncTodayActivity,
   getActivityData,
   getStreakData,
   getCategoryByCount,
