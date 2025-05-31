@@ -1,476 +1,116 @@
-/**
- * IndexedDB utilities for Naam Japa App
- * Provides enhanced storage capabilities and maintains compatibility with existing app features
- */
+import { AccountDataManager } from './accountDataManager';
 
-// Database configuration
-const DB_NAME = "NaamJapaDB";
-const DB_VERSION = 2; // Increased version to handle schema changes
+let db: IDBDatabase | null = null;
 
-// Object store names
-const STORES = {
-  userIdentity: "userIdentity",
-  mantrasData: "mantrasData",
-  reminders: "reminders",
-  achievements: "achievements",
-  settings: "settings",
-  audioCache: "audioCache",
-  activityData: "activityData"
-};
-
-// Keys for backwards compatibility with localStorage
-const KEYS = {
-  userData: 'chantTrackerUserData',
-  lifetimeCount: 'lifetimeCount',
-  todayCount: 'todayCount',
-  lastCountDate: 'lastCountDate'
-};
-
-/**
- * Initialize the database with all required object stores
- */
-const initializeDB = (): Promise<IDBDatabase> => {
+export const initializeDatabase = (): Promise<void> => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    
-    request.onerror = (event) => {
-      console.error("IndexedDB error:", (event.target as IDBOpenDBRequest).error);
-      reject((event.target as IDBOpenDBRequest).error);
+    if (db) {
+      resolve();
+      return;
+    }
+
+    const request = indexedDB.open('MantraCounterDB', 2);
+
+    request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+      const db = (event.target as IDBRequest).result as IDBDatabase;
+
+      if (event.oldVersion < 1) {
+        // Initial version, create object store
+        db.createObjectStore('counts', { keyPath: 'id', autoIncrement: true });
+      }
+
+      if (event.oldVersion < 2) {
+        // Version 2, add index for date
+        const countsStore = (event.target as IDBRequest).transaction.objectStore('counts');
+        countsStore.createIndex('date', 'date', { unique: false });
+      }
     };
-    
-    request.onsuccess = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      resolve(db);
+
+    request.onsuccess = (event: Event) => {
+      db = (event.target as IDBRequest).result as IDBDatabase;
+      console.log('Database initialized');
+      resolve();
     };
-    
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      
-      // Create object stores if they don't exist
-      if (!db.objectStoreNames.contains(STORES.userIdentity)) {
-        db.createObjectStore(STORES.userIdentity, { keyPath: "id" });
-      }
-      
-      if (!db.objectStoreNames.contains(STORES.mantrasData)) {
-        db.createObjectStore(STORES.mantrasData, { keyPath: "key" });
-      }
-      
-      if (!db.objectStoreNames.contains(STORES.reminders)) {
-        db.createObjectStore(STORES.reminders, { keyPath: "id" });
-      }
-      
-      if (!db.objectStoreNames.contains(STORES.achievements)) {
-        db.createObjectStore(STORES.achievements, { keyPath: "id" });
-      }
-      
-      if (!db.objectStoreNames.contains(STORES.settings)) {
-        db.createObjectStore(STORES.settings, { keyPath: "key" });
-      }
-      
-      if (!db.objectStoreNames.contains(STORES.audioCache)) {
-        db.createObjectStore(STORES.audioCache, { keyPath: "id" });
-      }
-      
-      if (!db.objectStoreNames.contains(STORES.activityData)) {
-        // Fix the keyPath issue by using auto-incrementing keys
-        const activityStore = db.createObjectStore(STORES.activityData, { keyPath: "id", autoIncrement: true });
-        activityStore.createIndex("date", "date", { unique: false });
-      }
+
+    request.onerror = (event: Event) => {
+      console.error('Database failed to open', event);
+      reject('Database failed to open');
     };
   });
 };
 
-/**
- * Store data in the specified object store with proper key handling
- */
-const storeData = async (storeName: string, data: any, customKey?: string): Promise<void> => {
-  try {
-    const db = await initializeDB();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, "readwrite");
-      const store = transaction.objectStore(storeName);
-      
-      // Fix the key issue for activity data
-      if (storeName === STORES.activityData && !data.id) {
-        // For activity data, if no id exists, let it auto-increment
-        if (data.date && !data.id) {
-          data.id = `activity_${data.date}_${Date.now()}`;
-        }
-      }
-      
-      const request = customKey ? store.put({ ...data, id: customKey }) : store.put(data);
-      
-      request.onsuccess = () => {
-        resolve();
-      };
-      
-      request.onerror = (event) => {
-        console.error("Error storing data:", (event.target as IDBRequest).error);
-        reject((event.target as IDBRequest).error);
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error("Failed to store data in IndexedDB:", error);
-    // Fallback to localStorage if IndexedDB fails
-    if (customKey) {
-      localStorage.setItem(customKey, JSON.stringify(data));
-    }
-    throw error;
-  }
-};
-
-/**
- * Retrieve data from the specified object store
- */
-const getData = async (storeName: string, key: string): Promise<any> => {
-  try {
-    const db = await initializeDB();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, "readonly");
-      const store = transaction.objectStore(storeName);
-      const request = store.get(key);
-      
-      request.onsuccess = () => {
-        resolve(request.result);
-      };
-      
-      request.onerror = (event) => {
-        console.error("Error retrieving data:", (event.target as IDBRequest).error);
-        reject((event.target as IDBRequest).error);
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error("Failed to retrieve data from IndexedDB:", error);
-    // Fallback to localStorage if IndexedDB fails
-    const localData = localStorage.getItem(key);
-    return localData ? JSON.parse(localData) : null;
-  }
-};
-
-/**
- * Delete data from the specified object store
- */
-const deleteData = async (storeName: string, key: string): Promise<void> => {
-  try {
-    const db = await initializeDB();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, "readwrite");
-      const store = transaction.objectStore(storeName);
-      const request = store.delete(key);
-      
-      request.onsuccess = () => {
-        resolve();
-      };
-      
-      request.onerror = (event) => {
-        console.error("Error deleting data:", (event.target as IDBRequest).error);
-        reject((event.target as IDBRequest).error);
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error("Failed to delete data from IndexedDB:", error);
-    // Fallback to localStorage if IndexedDB fails
-    localStorage.removeItem(key);
-    throw error;
-  }
-};
-
-/**
- * Get all data from an object store
- */
-const getAllData = async (storeName: string): Promise<any[]> => {
-  try {
-    const db = await initializeDB();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, "readonly");
-      const store = transaction.objectStore(storeName);
-      const request = store.getAll();
-      
-      request.onsuccess = () => {
-        resolve(request.result);
-      };
-      
-      request.onerror = (event) => {
-        console.error("Error retrieving all data:", (event.target as IDBRequest).error);
-        reject((event.target as IDBRequest).error);
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error("Failed to retrieve all data from IndexedDB:", error);
-    return [];
-  }
-};
-
-/**
- * Migrate data from localStorage to IndexedDB
- */
 export const migrateFromLocalStorage = async (): Promise<boolean> => {
   try {
-    // Check if we've already migrated
-    const migrationCompleted = await getData(STORES.settings, "migrationCompleted");
-    if (migrationCompleted) {
+    // Check if migration is needed
+    const isMigrated = localStorage.getItem('migrationComplete');
+    if (isMigrated) {
+      console.log('Migration already complete.');
       return true;
     }
     
-    // Migrate user data
-    const userDataStr = localStorage.getItem(KEYS.userData);
-    if (userDataStr) {
-      const userData = JSON.parse(userDataStr);
-      await storeData(STORES.userIdentity, userData);
-    }
+    // Initialize database
+    await initializeDatabase();
     
-    // Migrate mantra counts
-    const lifetimeCount = localStorage.getItem(KEYS.lifetimeCount);
+    // Get data from localStorage
+    const lifetimeCount = localStorage.getItem('lifetimeCount');
+    const todayCount = localStorage.getItem('todayCount');
+    
+    // Store data in IndexedDB
     if (lifetimeCount) {
-      await storeData(STORES.mantrasData, { 
-        value: parseInt(lifetimeCount, 10),
-        key: KEYS.lifetimeCount
-      });
+      await AccountDataManager.storeAccountData('mantraCount', parseInt(lifetimeCount, 10));
     }
     
-    const todayCount = localStorage.getItem(KEYS.todayCount);
-    const lastCountDate = localStorage.getItem(KEYS.lastCountDate);
+    // Migrate daily progress
     if (todayCount) {
-      await storeData(STORES.mantrasData, { 
-        value: parseInt(todayCount, 10),
-        date: lastCountDate || new Date().toDateString(),
-        key: KEYS.todayCount
-      });
+      const today = new Date().toDateString();
+      const dailyData = { [today]: parseInt(todayCount, 10) };
+      await AccountDataManager.storeAccountData('dailyProgress', dailyData);
     }
     
-    // Mark migration as complete
-    await storeData(STORES.settings, { key: "migrationCompleted", value: true });
-    
+    // Set migration flag
+    localStorage.setItem('migrationComplete', 'true');
+    console.log('Data migration from localStorage to IndexedDB complete.');
     return true;
   } catch (error) {
-    console.error("Migration failed:", error);
+    console.error('Data migration failed:', error);
     return false;
   }
 };
 
-/**
- * User identity management functions
- */
-export const saveUserData = async (userData: any): Promise<void> => {
-  await storeData(STORES.userIdentity, userData);
-  // Keep localStorage for backwards compatibility
-  localStorage.setItem(KEYS.userData, JSON.stringify(userData));
-};
-
-export const getUserData = async (): Promise<any> => {
-  // Try to get user ID from localStorage first for faster access
-  const localDataStr = localStorage.getItem(KEYS.userData);
-  let userId = "defaultUser";
-  
-  // Extract user ID if localStorage has data
-  if (localDataStr) {
-    try {
-      const localData = JSON.parse(localDataStr);
-      if (localData && localData.id) {
-        userId = localData.id;
-      }
-    } catch (e) {
-      console.error("Error parsing localStorage user data:", e);
-    }
-  }
-  
-  // Try IndexedDB with the obtained ID
-  const userData = await getData(STORES.userIdentity, userId);
-  
-  // Fall back to localStorage for existing users
-  if (!userData && localDataStr) {
-    try {
-      const parsedData = JSON.parse(localDataStr);
-      // Store it in IndexedDB for future use
-      await storeData(STORES.userIdentity, parsedData);
-      return parsedData;
-    } catch (e) {
-      console.error("Error parsing user data from localStorage:", e);
-    }
-  }
-  
-  return userData;
-};
-
-export const logoutUser = async (): Promise<void> => {
-  // For logout we only remove from localStorage as that's the quick check
-  localStorage.removeItem(KEYS.userData);
-};
-
-export const isUserLoggedIn = async (): Promise<boolean> => {
-  // Check localStorage first for faster response
-  if (localStorage.getItem(KEYS.userData) !== null) {
-    return true;
-  }
-  
-  // Then check IndexedDB
-  const userData = await getAllData(STORES.userIdentity);
-  return userData.length > 0;
-};
-
-/**
- * Mantra counting functions
- */
 export const getLifetimeCount = async (): Promise<number> => {
-  const countData = await getData(STORES.mantrasData, KEYS.lifetimeCount);
-  if (countData) {
-    return countData.value;
+  try {
+    const accountData = await AccountDataManager.getAccountData<number>('mantraCount');
+    return accountData || 0;
+  } catch (error) {
+    console.error('Error getting lifetime count:', error);
+    return 0;
   }
-  
-  // Fall back to localStorage
-  const localCount = localStorage.getItem(KEYS.lifetimeCount);
-  return localCount ? parseInt(localCount, 10) : 0;
 };
 
 export const getTodayCount = async (): Promise<number> => {
-  const today = new Date().toDateString();
-  const countData = await getData(STORES.mantrasData, KEYS.todayCount);
-  
-  if (countData && countData.date === today) {
-    return countData.value;
-  }
-  
-  // Check if we need to reset for a new day
-  if (countData && countData.date !== today) {
-    await storeData(STORES.mantrasData, {
-      key: KEYS.todayCount,
-      value: 0,
-      date: today
-    });
+  try {
+    const today = new Date().toDateString();
+    const dailyData = await AccountDataManager.getAccountData<any>('dailyProgress');
+    return dailyData?.[today] || 0;
+  } catch (error) {
+    console.error('Error getting today count:', error);
     return 0;
   }
-  
-  // Fall back to localStorage
-  const localCount = localStorage.getItem(KEYS.todayCount);
-  const localDate = localStorage.getItem(KEYS.lastCountDate);
-  
-  if (localDate === today && localCount) {
-    return parseInt(localCount, 10);
-  }
-  
-  return 0;
 };
 
-export const updateMantraCounts = async (increment: number = 1): Promise<{lifetimeCount: number, todayCount: number}> => {
-  const today = new Date().toDateString();
-  
-  // Get current counts
-  let lifetimeCount = await getLifetimeCount();
-  let todayCount = await getTodayCount();
-  
-  // Update counts
-  lifetimeCount += increment;
-  todayCount += increment;
-  
-  // Save to IndexedDB
-  await storeData(STORES.mantrasData, {
-    key: KEYS.lifetimeCount,
-    value: lifetimeCount
-  });
-  
-  await storeData(STORES.mantrasData, {
-    key: KEYS.todayCount,
-    value: todayCount,
-    date: today
-  });
-  
-  // Keep localStorage in sync for backwards compatibility
-  localStorage.setItem(KEYS.lifetimeCount, lifetimeCount.toString());
-  localStorage.setItem(KEYS.todayCount, todayCount.toString());
-  localStorage.setItem(KEYS.lastCountDate, today);
-  
-  return { lifetimeCount, todayCount };
-};
-
-/**
- * Check if browser supports IndexedDB
- */
-export const isIndexedDBSupported = (): boolean => {
-  return window.indexedDB !== undefined && window.indexedDB !== null;
-};
-
-/**
- * Wrapper functions to ensure compatibility with existing code
- */
-// Synchronous localStorage-like functions with async implementation
-// This will help make the transition smoother
-export const setItem = async (key: string, value: any): Promise<void> => {
-  const storeName = key.includes('chantTracker') ? STORES.userIdentity : STORES.mantrasData;
-  await storeData(storeName, { key, value: value });
-  // Keep localStorage for backwards compatibility
-  localStorage.setItem(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
-};
-
-export const getItem = async (key: string): Promise<any> => {
-  const storeName = key.includes('chantTracker') ? STORES.userIdentity : STORES.mantrasData;
-  const data = await getData(storeName, key);
-  return data ? data.value : null;
-};
-
-export const removeItem = async (key: string): Promise<void> => {
-  const storeName = key.includes('chantTracker') ? STORES.userIdentity : STORES.mantrasData;
-  await deleteData(storeName, key);
-  // Keep localStorage for backwards compatibility
-  localStorage.removeItem(key);
-};
-
-/**
- * Initialize database and perform migration from localStorage if needed
- */
-export const initializeDatabase = async (): Promise<void> => {
-  if (!isIndexedDBSupported()) {
-    console.warn("IndexedDB is not supported in this browser. Falling back to localStorage.");
-    return;
-  }
-  
+export const updateMantraCount = async (count: number): Promise<void> => {
   try {
-    // Open database connection to ensure the stores are created
-    await initializeDB();
+    await AccountDataManager.storeAccountData('mantraCount', count);
     
-    // Migrate data from localStorage if needed
-    await migrateFromLocalStorage();
+    // Also update today's count
+    const today = new Date().toDateString();
+    const dailyData = await AccountDataManager.getAccountData<any>('dailyProgress') || {};
+    dailyData[today] = (dailyData[today] || 0) + 1;
+    await AccountDataManager.storeAccountData('dailyProgress', dailyData);
+    
+    console.log(`Updated mantra count to ${count} for current account`);
   } catch (error) {
-    console.error("Database initialization failed:", error);
+    console.error('Error updating mantra count:', error);
+    throw error;
   }
-};
-
-export { STORES, storeData, getData, deleteData, getAllData };
-
-export default {
-  saveUserData,
-  getUserData,
-  logoutUser,
-  isUserLoggedIn,
-  getLifetimeCount,
-  getTodayCount,
-  updateMantraCounts,
-  migrateFromLocalStorage,
-  initializeDatabase,
-  setItem,
-  getItem,
-  removeItem,
-  storeData,
-  getData,
-  deleteData,
-  getAllData
 };

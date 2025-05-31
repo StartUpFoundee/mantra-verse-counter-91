@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { useBulletproofAuth } from '@/hooks/useBulletproofAuth';
-import BulletproofAccountSelector from './BulletproofAccountSelector';
-import BulletproofAccountCreation from './BulletproofAccountCreation';
+import ImprovedBulletproofAccountSelector from './ImprovedBulletproofAccountSelector';
+import MultiStepAccountCreation from './MultiStepAccountCreation';
 import BulletproofLoginDialog from './BulletproofLoginDialog';
 
 export type IdentityView = 'selector' | 'create' | 'login';
@@ -31,10 +31,15 @@ const IdentitySystem: React.FC<IdentitySystemProps> = ({ onAuthSuccess }) => {
     setCurrentView('login');
   };
 
-  const handleAccountCreated = () => {
-    setCurrentView('selector');
-    setSelectedSlot(null);
-    onAuthSuccess();
+  const handleAccountCreated = (accountCreated: boolean) => {
+    if (accountCreated) {
+      // Account created successfully, redirect to login for that slot
+      setCurrentView('login');
+    } else {
+      // User cancelled or error occurred, go back to selector
+      setCurrentView('selector');
+      setSelectedSlot(null);
+    }
   };
 
   const handleLoginSuccess = () => {
@@ -51,7 +56,7 @@ const IdentitySystem: React.FC<IdentitySystemProps> = ({ onAuthSuccess }) => {
   switch (currentView) {
     case 'create':
       return (
-        <BulletproofAccountCreation
+        <MultiStepAccountCreation
           targetSlot={selectedSlot!}
           onComplete={handleAccountCreated}
           onCancel={handleCancel}
@@ -69,7 +74,7 @@ const IdentitySystem: React.FC<IdentitySystemProps> = ({ onAuthSuccess }) => {
 
     default:
       return (
-        <BulletproofAccountSelector
+        <ImprovedBulletproofAccountSelector
           onCreateAccount={handleCreateAccount}
           onSelectAccount={handleSelectAccount}
         />

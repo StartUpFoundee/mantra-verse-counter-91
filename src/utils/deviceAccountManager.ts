@@ -79,7 +79,7 @@ export class DeviceAccountManager {
     // Store account
     await manager.storeData('account', account);
     
-    // Initialize account-specific data storage
+    // Initialize account-specific data storage with unique account ID context
     console.log(`Initializing account-specific storage for: ${account.id}`);
     await this.initializeAccountData(account);
     
@@ -109,11 +109,11 @@ export class DeviceAccountManager {
       throw new Error('Invalid password');
     }
     
-    // Get current account to save its data
+    // Get current account to save its data first
     const currentAccount = await this.getCurrentAccount();
     const currentAccountId = currentAccount?.id || null;
     
-    // Switch account data context
+    // Critical: Switch account data context to ensure complete data isolation
     await AccountDataManager.switchAccountContext(currentAccountId, account);
     
     // Update last login
@@ -124,6 +124,7 @@ export class DeviceAccountManager {
     await this.setCurrentAccount(account);
     
     console.log(`Successfully switched to account: ${account.name} (${account.id})`);
+    console.log(`Account context set to: ${account.id}`);
     
     return account;
   }
@@ -215,7 +216,7 @@ export class DeviceAccountManager {
       deviceId: await getBulletproofDeviceId()
     });
     
-    // Set account context for data access
+    // Critical: Set account context for data access
     AccountDataManager.setCurrentAccount(account.id);
     
     // Store in multiple places for bulletproof persistence
@@ -230,6 +231,7 @@ export class DeviceAccountManager {
     }
     
     console.log(`Set current account: ${account.name} (${account.id})`);
+    console.log(`Account data context: account_${account.id}_*`);
   }
   
   static async clearCurrentAccount(): Promise<void> {
@@ -249,15 +251,15 @@ export class DeviceAccountManager {
       channel.close();
     }
     
-    console.log('Cleared current account');
+    console.log('Cleared current account and data context');
   }
   
   /**
-   * Initialize default data for a new account
+   * Initialize default data for a new account with UNIQUE account ID
    */
   private static async initializeAccountData(account: UserAccount): Promise<void> {
     try {
-      // Initialize default account-specific data
+      // Initialize default account-specific data with unique keys
       const defaultData = {
         mantraCount: 0,
         dailyGoal: 108,
@@ -282,12 +284,13 @@ export class DeviceAccountManager {
         lastSession: null
       };
       
-      // Store each piece of default data with account-specific keys
+      // Store each piece of default data with account-specific keys using the account ID
       for (const [key, value] of Object.entries(defaultData)) {
         await AccountDataManager.storeAccountData(key, value, account.id);
       }
       
-      console.log(`Initialized default data for account: ${account.id}`);
+      console.log(`Initialized account-specific data for: ${account.id}`);
+      console.log(`Data keys created with prefix: account_${account.id}_`);
     } catch (error) {
       console.error('Failed to initialize account data:', error);
     }
