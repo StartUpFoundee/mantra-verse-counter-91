@@ -310,12 +310,12 @@ export const saveUserData = async (userData: any) => {
   const updatedUserData = { ...userData, id: embeddedId };
   
   localStorage.setItem('chantTrackerUserData', JSON.stringify(updatedUserData));
-  // Async save to IndexedDB - fire and forget
-  saveDBUserData(updatedUserData).then(() => {
-    // Success - data saved to IndexedDB
-  }).catch((error) => {
+  // Async save to IndexedDB - fire and forget (no promise returned)
+  try {
+    saveDBUserData(updatedUserData);
+  } catch (error) {
     console.error('Failed to save to IndexedDB:', error);
-  });
+  }
 };
 
 /**
@@ -323,12 +323,12 @@ export const saveUserData = async (userData: any) => {
  */
 export const logoutUser = () => {
   localStorage.removeItem('chantTrackerUserData');
-  // Async logout from IndexedDB - fire and forget
-  logoutDBUser().then(() => {
-    // Success - logged out from IndexedDB
-  }).catch((error) => {
+  // Async logout from IndexedDB - fire and forget (no promise returned)
+  try {
+    logoutDBUser();
+  } catch (error) {
     console.error('Failed to logout from IndexedDB:', error);
-  });
+  }
 };
 
 /**
