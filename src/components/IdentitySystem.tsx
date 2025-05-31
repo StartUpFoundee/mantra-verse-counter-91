@@ -32,13 +32,13 @@ const IdentitySystem: React.FC<IdentitySystemProps> = ({ onAuthSuccess }) => {
   };
 
   const handleAccountCreated = () => {
-    // Force redirect to home page after account creation
-    window.location.href = '/';
+    // Call the onAuthSuccess callback instead of forcing navigation
+    onAuthSuccess();
   };
 
   const handleLoginSuccess = () => {
-    // Force redirect to home page after login
-    window.location.href = '/';
+    // Call the onAuthSuccess callback instead of forcing navigation
+    onAuthSuccess();
   };
 
   const handleCancel = () => {
