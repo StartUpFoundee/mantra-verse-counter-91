@@ -53,6 +53,23 @@ const BulletproofAccountSelector: React.FC<BulletproofAccountSelectorProps> = ({
     return icon?.symbol || '🕉️';
   };
 
+  const formatAccountDate = (dateString: string | undefined): string => {
+    if (!dateString) {
+      return 'Unknown date';
+    }
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+      return format(date, 'MMM yyyy');
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
+    }
+  };
+
   const handleImportAccount = () => {
     if (hasMaxAccounts()) {
       toast.error('Device limit reached. Maximum 3 accounts per device.');
@@ -211,7 +228,7 @@ const BulletproofAccountSelector: React.FC<BulletproofAccountSelectorProps> = ({
                     <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                       <Calendar className="w-4 h-4" />
                       <span>
-                        Created {format(new Date(accountSlot.account?.createdAt || ''), 'MMM yyyy')}
+                        Created {formatAccountDate(accountSlot.account?.createdAt)}
                       </span>
                     </div>
                   </div>
