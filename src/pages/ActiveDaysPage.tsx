@@ -55,17 +55,13 @@ const ActiveDaysPage: React.FC = () => {
 
   const generateCalendarData = () => {
     const currentYear = new Date().getFullYear();
-    const journeyStartYear = getJourneyStartYear();
+    const currentDate = new Date();
     
-    // Only show past years if journey started before current year
-    const shouldShowYear = selectedYear >= journeyStartYear && selectedYear <= currentYear;
+    // Use current year if selectedYear is in the future
+    const yearToShow = selectedYear > currentYear ? currentYear : selectedYear;
     
-    if (!shouldShowYear) {
-      return [];
-    }
-
-    const startDate = new Date(selectedYear, 0, 1); // January 1st of selected year
-    const endDate = selectedYear === currentYear ? new Date() : new Date(selectedYear, 11, 31); // Dec 31st or today
+    const startDate = new Date(yearToShow, 0, 1); // January 1st of selected year
+    const endDate = yearToShow === currentYear ? currentDate : new Date(yearToShow, 11, 31); // Dec 31st or today
     
     const days = [];
     const currentDay = new Date(startDate);
@@ -73,7 +69,8 @@ const ActiveDaysPage: React.FC = () => {
     while (currentDay <= endDate) {
       const dateStr = currentDay.toISOString().split('T')[0];
       const count = activityData[dateStr] || 0;
-      const isToday = dateStr === new Date().toISOString().split('T')[0];
+      const todayStr = currentDate.toISOString().split('T')[0];
+      const isToday = dateStr === todayStr;
       
       days.push({
         date: dateStr,
@@ -198,7 +195,9 @@ const ActiveDaysPage: React.FC = () => {
                 </select>
               )}
             </div>
-            <p className="text-gray-600 dark:text-gray-400">Your spiritual practice journey{yearOptions.length > 1 ? ` starting from ${yearOptions[0]}` : ''}</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              Your spiritual practice journey{yearOptions.length > 1 ? ` starting from ${yearOptions[0]}` : ''}
+            </p>
           </div>
 
           <div className="space-y-4">
@@ -212,48 +211,50 @@ const ActiveDaysPage: React.FC = () => {
             </div>
 
             {/* Calendar Grid */}
-            <div className="flex gap-1 lg:gap-2 overflow-x-auto pb-4">
-              {Array.from({ length: 53 }, (_, weekIndex) => (
-                <div key={weekIndex} className="flex flex-col gap-1 lg:gap-2">
-                  {/* Month label */}
-                  {weekIndex === 0 || (calendarDays[weekIndex * 7] && calendarDays[weekIndex * 7].displayDate.getDate() <= 7) ? (
-                    <div className="h-4 lg:h-6 text-xs text-gray-500 dark:text-gray-400 mb-1 lg:mb-2 min-w-[40px] lg:min-w-[60px]">
-                      {calendarDays[weekIndex * 7] && months[calendarDays[weekIndex * 7].month]}
-                    </div>
-                  ) : (
-                    <div className="h-4 lg:h-6 mb-1 lg:mb-2"></div>
-                  )}
-                  
-                  {Array.from({ length: 7 }, (_, dayIndex) => {
-                    const dayData = calendarDays[weekIndex * 7 + dayIndex];
-                    if (!dayData) return <div key={dayIndex} className="w-6 h-6 lg:w-8 lg:h-8"></div>;
-                    
-                    const spiritualLevel = getSpiritualLevel(dayData.count);
-                    
-                    return (
-                      <div
-                        key={dayIndex}
-                        className={`w-6 h-6 lg:w-8 lg:h-8 rounded-sm cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative flex items-center justify-center text-xs lg:text-sm ${
-                          getActivityLevel(dayData.count)
-                        } ${dayData.isToday ? 'ring-2 ring-amber-500' : ''}`}
-                        onMouseEnter={(e) => {
-                          setHoveredDay({ date: dayData.date, count: dayData.count });
-                          handleMouseMove(e);
-                        }}
-                        onMouseMove={handleMouseMove}
-                        onMouseLeave={() => setHoveredDay(null)}
-                      >
-                        {dayData.count > 0 && (
-                          <span className="filter drop-shadow-sm">
-                            {spiritualLevel.icon}
-                          </span>
-                        )}
+            {calendarDays.length > 0 && (
+              <div className="flex gap-1 lg:gap-2 overflow-x-auto pb-4">
+                {Array.from({ length: Math.ceil(calendarDays.length / 7) }, (_, weekIndex) => (
+                  <div key={weekIndex} className="flex flex-col gap-1 lg:gap-2">
+                    {/* Month label */}
+                    {weekIndex === 0 || (calendarDays[weekIndex * 7] && calendarDays[weekIndex * 7].displayDate.getDate() <= 7) ? (
+                      <div className="h-4 lg:h-6 text-xs text-gray-500 dark:text-gray-400 mb-1 lg:mb-2 min-w-[40px] lg:min-w-[60px]">
+                        {calendarDays[weekIndex * 7] && months[calendarDays[weekIndex * 7].month]}
                       </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+                    ) : (
+                      <div className="h-4 lg:h-6 mb-1 lg:mb-2"></div>
+                    )}
+                    
+                    {Array.from({ length: 7 }, (_, dayIndex) => {
+                      const dayData = calendarDays[weekIndex * 7 + dayIndex];
+                      if (!dayData) return <div key={dayIndex} className="w-6 h-6 lg:w-8 lg:h-8"></div>;
+                      
+                      const spiritualLevel = getSpiritualLevel(dayData.count);
+                      
+                      return (
+                        <div
+                          key={dayIndex}
+                          className={`w-6 h-6 lg:w-8 lg:h-8 rounded-sm cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative flex items-center justify-center text-xs lg:text-sm ${
+                            getActivityLevel(dayData.count)
+                          } ${dayData.isToday ? 'ring-2 ring-amber-500' : ''}`}
+                          onMouseEnter={(e) => {
+                            setHoveredDay({ date: dayData.date, count: dayData.count });
+                            handleMouseMove(e);
+                          }}
+                          onMouseMove={handleMouseMove}
+                          onMouseLeave={() => setHoveredDay(null)}
+                        >
+                          {dayData.count > 0 && spiritualLevel.icon && (
+                            <span className="filter drop-shadow-sm">
+                              {spiritualLevel.icon}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </ModernCard>
       </div>

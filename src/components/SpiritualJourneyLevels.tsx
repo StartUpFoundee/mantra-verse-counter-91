@@ -119,10 +119,8 @@ const SpiritualJourneyLevels: React.FC<SpiritualJourneyLevelsProps> = ({ activit
             >
               <div className="flex flex-col items-center h-full justify-between">
                 <div className="text-3xl mb-2 filter drop-shadow-sm min-h-[3rem] flex items-center justify-center">
-                  {level.icon || (
-                    <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-bold text-gray-600 dark:text-gray-300">0</span>
-                    </div>
+                  {level.icon && (
+                    <span>{level.icon}</span>
                   )}
                 </div>
                 <div className="flex-1 flex flex-col justify-center">
