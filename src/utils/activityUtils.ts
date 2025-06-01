@@ -1,5 +1,6 @@
 
 import { getData, storeData, getAllData, STORES } from './indexedDBUtils';
+import { getTodayCount, getLifetimeCount } from './indexedDBUtils';
 
 export interface DailyActivity {
   date: string;
@@ -43,12 +44,21 @@ export const recordDailyActivity = async (count: number = 1): Promise<void> => {
  */
 export const getActivityData = async (): Promise<{[date: string]: number}> => {
   try {
+    // Get activity from IndexedDB
     const allActivity = await getAllData(STORES.activityData);
     const activityMap: {[date: string]: number} = {};
     
     allActivity.forEach((activity: DailyActivity) => {
       activityMap[activity.date] = activity.count;
     });
+    
+    // Also get today's count from the main counter system
+    const todayCount = await getTodayCount();
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (todayCount > 0) {
+      activityMap[today] = todayCount;
+    }
     
     return activityMap;
   } catch (error) {

@@ -3,7 +3,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, Flame, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getActivityData, getStreakData, recordDailyActivity } from "@/utils/activityUtils";
+import { getActivityData, getStreakData } from "@/utils/activityUtils";
+import { getTodayCount } from "@/utils/indexedDBUtils";
 import ModernCard from "@/components/ModernCard";
 import SpiritualJourneyLevels, { getSpiritualLevel } from "@/components/SpiritualJourneyLevels";
 
@@ -33,20 +34,26 @@ const ActiveDaysPage: React.FC = () => {
     const loadData = async () => {
       const activity = await getActivityData();
       const streaks = await getStreakData();
-      setActivityData(activity);
+      
+      // Get today's count from the main counter
+      const todayCount = await getTodayCount();
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Update activity data with today's count
+      const updatedActivity = { ...activity };
+      if (todayCount > 0) {
+        updatedActivity[today] = todayCount;
+      }
+      
+      setActivityData(updatedActivity);
       setStreakData(streaks);
     };
     loadData();
 
-    // Set up interval to refresh data every 5 seconds to catch updates
-    const interval = setInterval(loadData, 5000);
+    // Refresh data every 2 seconds to catch updates from mantra counter
+    const interval = setInterval(loadData, 2000);
     return () => clearInterval(interval);
   }, []);
-
-  const getActivityLevel = (count: number): string => {
-    if (count === 0) return "bg-gray-200/50 dark:bg-gray-700/50";
-    return "bg-emerald-200/70 dark:bg-emerald-800/50";
-  };
 
   // Get the earliest activity date to determine journey start
   const getJourneyStartYear = (): number => {
@@ -57,78 +64,80 @@ const ActiveDaysPage: React.FC = () => {
     return new Date(earliestDate).getFullYear();
   };
 
-  const generateCalendarData = () => {
-    const currentYear = new Date().getFullYear();
-    const currentDate = new Date();
-    
-    const yearToShow = selectedYear > currentYear ? currentYear : selectedYear;
-    const startDate = new Date(yearToShow, 0, 1);
-    const endDate = yearToShow === currentYear ? currentDate : new Date(yearToShow, 11, 31);
-    
-    const days = [];
-    const currentDay = new Date(startDate);
-    
-    // Add empty cells for days before the first day of the year
-    const firstDayOfWeek = startDate.getDay();
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      days.push(null);
-    }
-    
-    while (currentDay <= endDate) {
-      const dateStr = currentDay.toISOString().split('T')[0];
-      const count = activityData[dateStr] || 0;
-      const todayStr = currentDate.toISOString().split('T')[0];
-      const isToday = dateStr === todayStr;
-      
-      days.push({
-        date: dateStr,
-        count,
-        isToday,
-        dayOfWeek: currentDay.getDay(),
-        month: currentDay.getMonth(),
-        dayOfMonth: currentDay.getDate(),
-        displayDate: new Date(currentDay)
-      });
-      
-      currentDay.setDate(currentDay.getDate() + 1);
-    }
-    
-    return days;
-  };
-
-  const calendarDays = generateCalendarData();
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    setMousePosition({ x: e.clientX, y: e.clientY });
-  };
-
-  // Generate year options based on journey start
+  // Generate year options only if we have past year data
   const generateYearOptions = () => {
     const currentYear = new Date().getFullYear();
     const journeyStartYear = getJourneyStartYear();
-    const years = [];
     
+    if (journeyStartYear === currentYear) {
+      return [currentYear]; // Only current year
+    }
+    
+    const years = [];
     for (let year = journeyStartYear; year <= currentYear; year++) {
       years.push(year);
     }
-    
     return years;
   };
 
   const yearOptions = generateYearOptions();
 
-  // Group calendar days into weeks for proper display
-  const groupDaysIntoWeeks = () => {
-    const weeks = [];
-    for (let i = 0; i < calendarDays.length; i += 7) {
-      weeks.push(calendarDays.slice(i, i + 7));
+  // Generate simple calendar for the selected year
+  const generateCalendarData = () => {
+    const year = selectedYear;
+    const months = [];
+    
+    for (let month = 0; month < 12; month++) {
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startingDayOfWeek = firstDay.getDay();
+      
+      const days = [];
+      
+      // Add empty cells for days before the first day of the month
+      for (let i = 0; i < startingDayOfWeek; i++) {
+        days.push(null);
+      }
+      
+      // Add all days of the month
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateStr = date.toISOString().split('T')[0];
+        const count = activityData[dateStr] || 0;
+        const today = new Date().toISOString().split('T')[0];
+        const isToday = dateStr === today;
+        
+        days.push({
+          date: dateStr,
+          count,
+          isToday,
+          day
+        });
+      }
+      
+      months.push({
+        name: new Date(year, month).toLocaleDateString('en-US', { month: 'long' }),
+        days,
+        month
+      });
     }
-    return weeks;
+    
+    return months;
   };
 
-  const calendarWeeks = groupDaysIntoWeeks();
+  const calendarMonths = generateCalendarData();
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setMousePosition({ x: e.clientX, y: e.clientY });
+  };
+
+  const getActivityLevel = (count: number): string => {
+    if (count === 0) return "bg-gray-200/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600";
+    const level = getSpiritualLevel(count);
+    return "bg-emerald-200/70 dark:bg-emerald-800/50 border border-emerald-300 dark:border-emerald-600";
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800 p-4 lg:p-8">
@@ -193,7 +202,7 @@ const ActiveDaysPage: React.FC = () => {
       {/* Spiritual Journey Levels */}
       <SpiritualJourneyLevels activityData={activityData} />
 
-      {/* Calendar Grid */}
+      {/* Calendar */}
       <div className="max-w-6xl mx-auto mb-8 lg:mb-12">
         <ModernCard className="p-6 lg:p-8 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-xl border-amber-200/50 dark:border-amber-700/50" gradient>
           <div className="mb-6">
@@ -215,69 +224,68 @@ const ActiveDaysPage: React.FC = () => {
               )}
             </div>
             <p className="text-gray-600 dark:text-gray-400">
-              Your spiritual practice journey{yearOptions.length > 1 ? ` starting from ${yearOptions[0]}` : ''}
+              Your spiritual practice journey {yearOptions.length > 1 ? `starting from ${yearOptions[0]}` : `for ${selectedYear}`}
             </p>
           </div>
 
-          <div className="space-y-4">
-            {/* Month headers */}
-            <div className="grid grid-cols-12 gap-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">
-              {months.map((month, index) => (
-                <div key={month}>{month}</div>
-              ))}
-            </div>
-
-            {/* Weekday Labels */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {weekdays.map((day) => (
-                <div key={day} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-2">
-                  {day}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {calendarMonths.map((monthData) => (
+              <div key={monthData.month} className="bg-white/50 dark:bg-zinc-900/50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 text-center">
+                  {monthData.name}
+                </h3>
+                
+                {/* Weekday headers */}
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {weekdays.map((day) => (
+                    <div key={day} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-1">
+                      {day}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* Calendar Grid */}
-            <div className="space-y-1">
-              {calendarWeeks.map((week, weekIndex) => (
-                <div key={weekIndex} className="grid grid-cols-7 gap-1">
-                  {week.map((dayData, dayIndex) => {
-                    if (!dayData) {
-                      return <div key={`empty-${dayIndex}`} className="w-8 h-8"></div>;
-                    }
-                    
-                    const spiritualLevel = getSpiritualLevel(dayData.count);
-                    
-                    return (
-                      <div
-                        key={dayData.date}
-                        className={`w-8 h-8 rounded-sm cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative flex items-center justify-center text-xs ${
-                          getActivityLevel(dayData.count)
-                        } ${dayData.isToday ? 'ring-2 ring-amber-500' : ''}`}
-                        onMouseEnter={(e) => {
-                          setHoveredDay({ date: dayData.date, count: dayData.count });
-                          handleMouseMove(e);
-                        }}
-                        onMouseMove={handleMouseMove}
-                        onMouseLeave={() => setHoveredDay(null)}
-                      >
-                        {dayData.count > 0 && spiritualLevel.icon ? (
-                          <span className="filter drop-shadow-sm text-xs">
-                            {spiritualLevel.icon}
+                {/* Days grid */}
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: Math.ceil(monthData.days.length / 7) }).map((_, weekIndex) => (
+                    monthData.days.slice(weekIndex * 7, (weekIndex + 1) * 7).map((dayData, dayIndex) => {
+                      if (!dayData) {
+                        return <div key={`empty-${weekIndex}-${dayIndex}`} className="w-8 h-8"></div>;
+                      }
+                      
+                      const spiritualLevel = getSpiritualLevel(dayData.count);
+                      
+                      return (
+                        <div
+                          key={dayData.date}
+                          className={`w-8 h-8 rounded-sm cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative flex items-center justify-center text-xs ${
+                            getActivityLevel(dayData.count)
+                          } ${dayData.isToday ? 'ring-2 ring-amber-500 bg-amber-100 dark:bg-amber-900' : ''}`}
+                          onMouseEnter={(e) => {
+                            setHoveredDay({ date: dayData.date, count: dayData.count });
+                            handleMouseMove(e);
+                          }}
+                          onMouseMove={handleMouseMove}
+                          onMouseLeave={() => setHoveredDay(null)}
+                        >
+                          {dayData.count > 0 && spiritualLevel.icon ? (
+                            <span className="filter drop-shadow-sm text-xs absolute">
+                              {spiritualLevel.icon}
+                            </span>
+                          ) : (
+                            dayData.count > 0 && (
+                              <div className="w-2 h-2 bg-emerald-500 rounded-full absolute"></div>
+                            )
+                          )}
+                          <span className={`text-xs font-medium ${dayData.isToday ? 'text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-gray-300'} ${dayData.count > 0 ? 'mt-3' : ''}`}>
+                            {dayData.day}
                           </span>
-                        ) : (
-                          dayData.count > 0 && (
-                            <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                          )
-                        )}
-                        {dayData.isToday && (
-                          <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-amber-500 rounded-full"></div>
-                        )}
-                      </div>
-                    );
-                  })}
+                        </div>
+                      );
+                    })
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </ModernCard>
       </div>
