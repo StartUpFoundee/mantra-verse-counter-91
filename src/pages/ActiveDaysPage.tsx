@@ -4,7 +4,7 @@ import { ArrowLeft, Calendar, Flame, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getActivityData, getStreakData } from "@/utils/activityUtils";
 import ModernCard from "@/components/ModernCard";
-import SpiritualJourneyLevels from "@/components/SpiritualJourneyLevels";
+import SpiritualJourneyLevels, { getSpiritualLevel } from "@/components/SpiritualJourneyLevels";
 
 interface ActivityData {
   [date: string]: number;
@@ -39,10 +39,7 @@ const ActiveDaysPage: React.FC = () => {
 
   const getActivityLevel = (count: number): string => {
     if (count === 0) return "bg-gray-200/50 dark:bg-gray-700/50";
-    if (count <= 20) return "bg-emerald-200/70 dark:bg-emerald-800/50";
-    if (count <= 50) return "bg-emerald-300/80 dark:bg-emerald-700/60";
-    if (count <= 100) return "bg-emerald-400/90 dark:bg-emerald-600/70";
-    return "bg-emerald-500 dark:bg-emerald-500";
+    return "bg-emerald-200/70 dark:bg-emerald-800/50";
   };
 
   const generateCalendarData = () => {
@@ -100,6 +97,74 @@ const ActiveDaysPage: React.FC = () => {
         <div className="w-28"></div>
       </div>
 
+      {/* Calendar Grid */}
+      <div className="max-w-6xl mx-auto mb-8 lg:mb-12">
+        <ModernCard className="p-6 lg:p-8 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-xl border-amber-200/50 dark:border-amber-700/50" gradient>
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Calendar className="w-6 h-6 lg:w-7 lg:h-7 text-amber-600 dark:text-amber-400" />
+              <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Activity Calendar</h2>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400">Your spiritual practice journey over the past year</p>
+          </div>
+
+          <div className="space-y-4">
+            {/* Weekday Labels */}
+            <div className="flex gap-1 lg:gap-2 ml-12 lg:ml-16">
+              {weekdays.map((day) => (
+                <div key={day} className="w-6 h-6 lg:w-8 lg:h-8 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center">
+                  {day[0]}
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="flex gap-1 lg:gap-2 overflow-x-auto pb-4">
+              {Array.from({ length: 53 }, (_, weekIndex) => (
+                <div key={weekIndex} className="flex flex-col gap-1 lg:gap-2">
+                  {/* Month label */}
+                  {weekIndex === 0 || (calendarDays[weekIndex * 7] && calendarDays[weekIndex * 7].displayDate.getDate() <= 7) ? (
+                    <div className="h-4 lg:h-6 text-xs text-gray-500 dark:text-gray-400 mb-1 lg:mb-2 min-w-[40px] lg:min-w-[60px]">
+                      {calendarDays[weekIndex * 7] && months[calendarDays[weekIndex * 7].month]}
+                    </div>
+                  ) : (
+                    <div className="h-4 lg:h-6 mb-1 lg:mb-2"></div>
+                  )}
+                  
+                  {Array.from({ length: 7 }, (_, dayIndex) => {
+                    const dayData = calendarDays[weekIndex * 7 + dayIndex];
+                    if (!dayData) return <div key={dayIndex} className="w-6 h-6 lg:w-8 lg:h-8"></div>;
+                    
+                    const spiritualLevel = getSpiritualLevel(dayData.count);
+                    
+                    return (
+                      <div
+                        key={dayIndex}
+                        className={`w-6 h-6 lg:w-8 lg:h-8 rounded-sm cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative flex items-center justify-center text-xs lg:text-sm ${
+                          getActivityLevel(dayData.count)
+                        } ${dayData.isToday ? 'ring-2 ring-amber-500' : ''}`}
+                        onMouseEnter={(e) => {
+                          setHoveredDay({ date: dayData.date, count: dayData.count });
+                          handleMouseMove(e);
+                        }}
+                        onMouseMove={handleMouseMove}
+                        onMouseLeave={() => setHoveredDay(null)}
+                      >
+                        {dayData.count > 0 && (
+                          <span className="filter drop-shadow-sm">
+                            {spiritualLevel.icon}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </ModernCard>
+      </div>
+
       {/* Spiritual Journey Levels */}
       <SpiritualJourneyLevels activityData={activityData} />
 
@@ -145,77 +210,6 @@ const ActiveDaysPage: React.FC = () => {
         </ModernCard>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="max-w-6xl mx-auto">
-        <ModernCard className="p-6 lg:p-8 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-xl border-amber-200/50 dark:border-amber-700/50" gradient>
-          <div className="mb-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Calendar className="w-6 h-6 lg:w-7 lg:h-7 text-amber-600 dark:text-amber-400" />
-              <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Activity Calendar</h2>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400">Your spiritual practice journey over the past year</p>
-          </div>
-
-          <div className="space-y-4">
-            {/* Weekday Labels */}
-            <div className="flex gap-1 lg:gap-2 ml-12 lg:ml-16">
-              {weekdays.map((day) => (
-                <div key={day} className="w-3 h-3 lg:w-4 lg:h-4 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center">
-                  {day[0]}
-                </div>
-              ))}
-            </div>
-
-            {/* Calendar Grid */}
-            <div className="flex gap-1 lg:gap-2 overflow-x-auto pb-4">
-              {Array.from({ length: 53 }, (_, weekIndex) => (
-                <div key={weekIndex} className="flex flex-col gap-1 lg:gap-2">
-                  {/* Month label */}
-                  {weekIndex === 0 || (calendarDays[weekIndex * 7] && calendarDays[weekIndex * 7].displayDate.getDate() <= 7) ? (
-                    <div className="h-4 lg:h-6 text-xs text-gray-500 dark:text-gray-400 mb-1 lg:mb-2 min-w-[40px] lg:min-w-[60px]">
-                      {calendarDays[weekIndex * 7] && months[calendarDays[weekIndex * 7].month]}
-                    </div>
-                  ) : (
-                    <div className="h-4 lg:h-6 mb-1 lg:mb-2"></div>
-                  )}
-                  
-                  {Array.from({ length: 7 }, (_, dayIndex) => {
-                    const dayData = calendarDays[weekIndex * 7 + dayIndex];
-                    if (!dayData) return <div key={dayIndex} className="w-3 h-3 lg:w-4 lg:h-4"></div>;
-                    
-                    return (
-                      <div
-                        key={dayIndex}
-                        className={`w-3 h-3 lg:w-4 lg:h-4 rounded-sm cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative ${
-                          getActivityLevel(dayData.count)
-                        } ${dayData.isToday ? 'ring-2 ring-amber-500' : ''}`}
-                        onMouseEnter={(e) => {
-                          setHoveredDay({ date: dayData.date, count: dayData.count });
-                          handleMouseMove(e);
-                        }}
-                        onMouseMove={handleMouseMove}
-                        onMouseLeave={() => setHoveredDay(null)}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-
-            {/* Legend */}
-            <div className="flex items-center gap-2 lg:gap-3 text-xs lg:text-sm text-gray-500 dark:text-gray-400 justify-center">
-              <span>Less</span>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-gray-200/50 dark:bg-gray-700/50 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-200/70 dark:bg-emerald-800/50 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-300/80 dark:bg-emerald-700/60 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-400/90 dark:bg-emerald-600/70 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-500 dark:bg-emerald-500 rounded-sm"></div>
-              <span>More</span>
-            </div>
-          </div>
-        </ModernCard>
-      </div>
-
       {/* Tooltip */}
       {hoveredDay && (
         <div
@@ -235,6 +229,9 @@ const ActiveDaysPage: React.FC = () => {
           </div>
           <div className="text-amber-600 dark:text-amber-400">
             {hoveredDay.count} jaaps completed
+          </div>
+          <div className="text-gray-500 dark:text-gray-400 text-xs">
+            {getSpiritualLevel(hoveredDay.count).name} level
           </div>
         </div>
       )}

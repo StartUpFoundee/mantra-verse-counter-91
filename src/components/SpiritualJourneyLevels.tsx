@@ -15,14 +15,14 @@ interface SpiritualJourneyLevelsProps {
   activityData: {[date: string]: number};
 }
 
-const spiritualLevels: SpiritualLevel[] = [
+export const spiritualLevels: SpiritualLevel[] = [
   {
     name: "Rogi",
-    icon: "",
+    icon: "⚪",
     range: "0 jaaps",
     minJaaps: 0,
     maxJaaps: 0,
-    color: "bg-gray-200 text-gray-600"
+    color: "bg-gray-100 text-gray-700 border-gray-300"
   },
   {
     name: "Bhogi",
@@ -30,7 +30,7 @@ const spiritualLevels: SpiritualLevel[] = [
     range: "1-108",
     minJaaps: 1,
     maxJaaps: 108,
-    color: "bg-green-200 text-green-700"
+    color: "bg-amber-100 text-amber-800 border-amber-300"
   },
   {
     name: "Yogi",
@@ -38,7 +38,7 @@ const spiritualLevels: SpiritualLevel[] = [
     range: "109-500",
     minJaaps: 109,
     maxJaaps: 500,
-    color: "bg-blue-200 text-blue-700"
+    color: "bg-blue-100 text-blue-800 border-blue-300"
   },
   {
     name: "Sadhak",
@@ -46,7 +46,7 @@ const spiritualLevels: SpiritualLevel[] = [
     range: "501-1000",
     minJaaps: 501,
     maxJaaps: 1000,
-    color: "bg-teal-200 text-teal-700"
+    color: "bg-teal-100 text-teal-800 border-teal-300"
   },
   {
     name: "Tapasvi",
@@ -54,7 +54,7 @@ const spiritualLevels: SpiritualLevel[] = [
     range: "1001-1500",
     minJaaps: 1001,
     maxJaaps: 1500,
-    color: "bg-yellow-200 text-yellow-700"
+    color: "bg-orange-100 text-orange-800 border-orange-300"
   },
   {
     name: "Rishi",
@@ -62,7 +62,7 @@ const spiritualLevels: SpiritualLevel[] = [
     range: "1501-2100",
     minJaaps: 1501,
     maxJaaps: 2100,
-    color: "bg-purple-200 text-purple-700"
+    color: "bg-purple-100 text-purple-800 border-purple-300"
   },
   {
     name: "Jivanmukta",
@@ -70,11 +70,11 @@ const spiritualLevels: SpiritualLevel[] = [
     range: "2100+",
     minJaaps: 2100,
     maxJaaps: null,
-    color: "bg-pink-200 text-pink-700"
+    color: "bg-pink-100 text-pink-800 border-pink-300"
   }
 ];
 
-const getSpiritualLevel = (jaapCount: number): SpiritualLevel => {
+export const getSpiritualLevel = (jaapCount: number): SpiritualLevel => {
   for (let i = spiritualLevels.length - 1; i >= 0; i--) {
     const level = spiritualLevels[i];
     if (jaapCount >= level.minJaaps && (level.maxJaaps === null || jaapCount <= level.maxJaaps)) {
@@ -102,7 +102,7 @@ const SpiritualJourneyLevels: React.FC<SpiritualJourneyLevelsProps> = ({ activit
 
   return (
     <div className="mb-8 lg:mb-12 max-w-6xl mx-auto">
-      <ModernCard className="p-6 lg:p-8 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-xl border-amber-200/50 dark:border-amber-700/50" gradient>
+      <ModernCard className="p-6 lg:p-8 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-xl border-amber-200/50 dark:border-amber-700/50" gradient>
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <span className="text-2xl">🏆</span>
@@ -115,15 +115,19 @@ const SpiritualJourneyLevels: React.FC<SpiritualJourneyLevelsProps> = ({ activit
           {levelDays.map((level, index) => (
             <div
               key={index}
-              className={`rounded-xl p-4 text-center transition-all duration-200 hover:scale-105 ${level.color}`}
+              className={`rounded-xl p-4 text-center transition-all duration-200 hover:scale-105 border-2 ${level.color}`}
             >
-              {level.icon && (
-                <div className="text-2xl mb-2">{level.icon}</div>
-              )}
-              <div className="font-semibold text-sm mb-1">{level.name}</div>
-              <div className="text-xs opacity-75 mb-2">{level.range}</div>
-              <div className="font-bold text-lg">{level.days}</div>
-              <div className="text-xs opacity-75">days</div>
+              <div className="flex flex-col items-center h-full justify-between">
+                <div className="text-3xl mb-2 filter drop-shadow-sm">{level.icon}</div>
+                <div className="flex-1 flex flex-col justify-center">
+                  <div className="font-semibold text-sm mb-1">{level.name}</div>
+                  <div className="text-xs opacity-75 mb-2">{level.range}</div>
+                </div>
+                <div className="mt-auto">
+                  <div className="font-bold text-lg">{level.days}</div>
+                  <div className="text-xs opacity-75">days</div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
