@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, Flame, Target, TrendingUp } from "lucide-react";
@@ -26,6 +27,7 @@ const ActiveDaysPage: React.FC = () => {
   });
   const [hoveredDay, setHoveredDay] = useState<{date: string, count: number} | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     const loadData = async () => {
@@ -42,18 +44,36 @@ const ActiveDaysPage: React.FC = () => {
     return "bg-emerald-200/70 dark:bg-emerald-800/50";
   };
 
+  // Get the earliest activity date to determine journey start
+  const getJourneyStartYear = (): number => {
+    const activityDates = Object.keys(activityData).filter(date => activityData[date] > 0);
+    if (activityDates.length === 0) return new Date().getFullYear();
+    
+    const earliestDate = activityDates.sort()[0];
+    return new Date(earliestDate).getFullYear();
+  };
+
   const generateCalendarData = () => {
-    const today = new Date();
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - 364);
+    const currentYear = new Date().getFullYear();
+    const journeyStartYear = getJourneyStartYear();
+    
+    // Only show past years if journey started before current year
+    const shouldShowYear = selectedYear >= journeyStartYear && selectedYear <= currentYear;
+    
+    if (!shouldShowYear) {
+      return [];
+    }
+
+    const startDate = new Date(selectedYear, 0, 1); // January 1st of selected year
+    const endDate = selectedYear === currentYear ? new Date() : new Date(selectedYear, 11, 31); // Dec 31st or today
     
     const days = [];
     const currentDay = new Date(startDate);
     
-    while (currentDay <= today) {
+    while (currentDay <= endDate) {
       const dateStr = currentDay.toISOString().split('T')[0];
       const count = activityData[dateStr] || 0;
-      const isToday = dateStr === today.toISOString().split('T')[0];
+      const isToday = dateStr === new Date().toISOString().split('T')[0];
       
       days.push({
         date: dateStr,
@@ -79,6 +99,21 @@ const ActiveDaysPage: React.FC = () => {
     setMousePosition({ x: e.clientX, y: e.clientY });
   };
 
+  // Generate year options based on journey start
+  const generateYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const journeyStartYear = getJourneyStartYear();
+    const years = [];
+    
+    for (let year = journeyStartYear; year <= currentYear; year++) {
+      years.push(year);
+    }
+    
+    return years;
+  };
+
+  const yearOptions = generateYearOptions();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800 p-4 lg:p-8">
       {/* Header */}
@@ -97,15 +132,73 @@ const ActiveDaysPage: React.FC = () => {
         <div className="w-28"></div>
       </div>
 
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mb-8 lg:mb-12 max-w-6xl mx-auto">
+        <ModernCard className="p-6 lg:p-8 bg-gradient-to-br from-orange-400/20 to-red-500/20 border-orange-300/30 dark:border-orange-600/30" gradient>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Flame className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg lg:text-xl font-semibold text-orange-600 dark:text-orange-400 mb-1">Current Streak</h3>
+              <div className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{streakData.currentStreak}</div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">days in a row</p>
+            </div>
+          </div>
+        </ModernCard>
+
+        <ModernCard className="p-6 lg:p-8 bg-gradient-to-br from-emerald-400/20 to-green-500/20 border-emerald-300/30 dark:border-emerald-600/30" gradient>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl flex items-center justify-center shadow-lg">
+              <TrendingUp className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg lg:text-xl font-semibold text-emerald-600 dark:text-emerald-400 mb-1">Max Streak</h3>
+              <div className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{streakData.maxStreak}</div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">personal best</p>
+            </div>
+          </div>
+        </ModernCard>
+
+        <ModernCard className="p-6 lg:p-8 bg-gradient-to-br from-purple-400/20 to-indigo-500/20 border-purple-300/30 dark:border-purple-600/30" gradient>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Target className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg lg:text-xl font-semibold text-purple-600 dark:text-purple-400 mb-1">Total Active Days</h3>
+              <div className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{streakData.totalActiveDays}</div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">lifetime practice</p>
+            </div>
+          </div>
+        </ModernCard>
+      </div>
+
+      {/* Spiritual Journey Levels */}
+      <SpiritualJourneyLevels activityData={activityData} />
+
       {/* Calendar Grid */}
       <div className="max-w-6xl mx-auto mb-8 lg:mb-12">
         <ModernCard className="p-6 lg:p-8 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-xl border-amber-200/50 dark:border-amber-700/50" gradient>
           <div className="mb-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Calendar className="w-6 h-6 lg:w-7 lg:h-7 text-amber-600 dark:text-amber-400" />
-              <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Activity Calendar</h2>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <Calendar className="w-6 h-6 lg:w-7 lg:h-7 text-amber-600 dark:text-amber-400" />
+                <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Activity Calendar</h2>
+              </div>
+              {yearOptions.length > 1 && (
+                <select 
+                  value={selectedYear} 
+                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                  className="bg-white dark:bg-zinc-800 border border-amber-200/50 dark:border-amber-700/50 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 dark:text-white"
+                >
+                  {yearOptions.map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              )}
             </div>
-            <p className="text-gray-600 dark:text-gray-400">Your spiritual practice journey over the past year</p>
+            <p className="text-gray-600 dark:text-gray-400">Your spiritual practice journey{yearOptions.length > 1 ? ` starting from ${yearOptions[0]}` : ''}</p>
           </div>
 
           <div className="space-y-4">
@@ -160,51 +253,6 @@ const ActiveDaysPage: React.FC = () => {
                   })}
                 </div>
               ))}
-            </div>
-          </div>
-        </ModernCard>
-      </div>
-
-      {/* Spiritual Journey Levels */}
-      <SpiritualJourneyLevels activityData={activityData} />
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mb-8 lg:mb-12 max-w-6xl mx-auto">
-        <ModernCard className="p-6 lg:p-8 bg-gradient-to-br from-orange-400/20 to-red-500/20 border-orange-300/30 dark:border-orange-600/30" gradient>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Flame className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
-            </div>
-            <div>
-              <h3 className="text-lg lg:text-xl font-semibold text-orange-600 dark:text-orange-400 mb-1">Current Streak</h3>
-              <div className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{streakData.currentStreak}</div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">days in a row</p>
-            </div>
-          </div>
-        </ModernCard>
-
-        <ModernCard className="p-6 lg:p-8 bg-gradient-to-br from-emerald-400/20 to-green-500/20 border-emerald-300/30 dark:border-emerald-600/30" gradient>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl flex items-center justify-center shadow-lg">
-              <TrendingUp className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
-            </div>
-            <div>
-              <h3 className="text-lg lg:text-xl font-semibold text-emerald-600 dark:text-emerald-400 mb-1">Max Streak</h3>
-              <div className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{streakData.maxStreak}</div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">personal best</p>
-            </div>
-          </div>
-        </ModernCard>
-
-        <ModernCard className="p-6 lg:p-8 bg-gradient-to-br from-purple-400/20 to-indigo-500/20 border-purple-300/30 dark:border-purple-600/30" gradient>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Target className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
-            </div>
-            <div>
-              <h3 className="text-lg lg:text-xl font-semibold text-purple-600 dark:text-purple-400 mb-1">Total Active Days</h3>
-              <div className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{streakData.totalActiveDays}</div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">lifetime practice</p>
             </div>
           </div>
         </ModernCard>
