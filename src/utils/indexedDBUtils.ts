@@ -1,4 +1,3 @@
-
 import { AccountDataManager } from './accountDataManager';
 
 let db: IDBDatabase | null = null;
@@ -15,7 +14,7 @@ export const initializeDatabase = (): Promise<void> => {
       return;
     }
 
-    const request = indexedDB.open('MantraCounterDB', 2);
+    const request = indexedDB.open('MantraCounterDB', 3);
 
     request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
       const db = (event.target as IDBRequest).result as IDBDatabase;
@@ -29,6 +28,13 @@ export const initializeDatabase = (): Promise<void> => {
         // Version 2, add index for date
         const countsStore = (event.target as IDBRequest).transaction.objectStore('counts');
         countsStore.createIndex('date', 'date', { unique: false });
+      }
+
+      if (event.oldVersion < 3) {
+        // Version 3, add activityData store
+        if (!db.objectStoreNames.contains('activityData')) {
+          db.createObjectStore('activityData');
+        }
       }
     };
 
@@ -239,4 +245,43 @@ export const getAllData = async (storeName: string): Promise<any[]> => {
       reject(request.error);
     };
   });
+};
+
+// Add function to clear all data for fresh start
+export const clearAllData = async (): Promise<void> => {
+  try {
+    await initializeDatabase();
+    
+    // Clear activity data
+    const request = indexedDB.open('MantraCounterDB', 3);
+    
+    request.onsuccess = () => {
+      const db = request.result;
+      
+      // Clear activity data store
+      if (db.objectStoreNames.contains('activityData')) {
+        const transaction = db.transaction(['activityData'], 'readwrite');
+        const store = transaction.objectStore('activityData');
+        store.clear();
+      }
+      
+      // Clear counts store
+      if (db.objectStoreNames.contains('counts')) {
+        const transaction2 = db.transaction(['counts'], 'readwrite');
+        const store2 = transaction2.objectStore('counts');
+        store2.clear();
+      }
+    };
+    
+    // Also clear localStorage for account data
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('account_') || key.includes('mantra') || key.includes('daily')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    console.log('All data cleared successfully');
+  } catch (error) {
+    console.error('Failed to clear all data:', error);
+  }
 };

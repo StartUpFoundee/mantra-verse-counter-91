@@ -1,49 +1,49 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, Flame, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getActivityData, getStreakData } from "@/utils/activityUtils";
+import { 
+  getActivityData, 
+  getStreakData, 
+  getCategoryCounts, 
+  getSpiritualCategory,
+  DailyActivity,
+  StreakData,
+  CategoryCounts
+} from "@/utils/activityUtils";
 import ModernCard from "@/components/ModernCard";
-
-interface ActivityData {
-  [date: string]: number;
-}
-
-interface StreakData {
-  currentStreak: number;
-  maxStreak: number;
-  totalActiveDays: number;
-}
+import SpiritualJourneyLevels from "@/components/SpiritualJourneyLevels";
 
 const ActiveDaysPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activityData, setActivityData] = useState<ActivityData>({});
+  const [activityData, setActivityData] = useState<{[date: string]: DailyActivity}>({});
   const [streakData, setStreakData] = useState<StreakData>({
     currentStreak: 0,
     maxStreak: 0,
     totalActiveDays: 0
   });
-  const [hoveredDay, setHoveredDay] = useState<{date: string, count: number} | null>(null);
+  const [categoryCounts, setCategoryCounts] = useState<CategoryCounts>({});
+  const [hoveredDay, setHoveredDay] = useState<{date: string, activity: DailyActivity} | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
+  // Force data refresh when component mounts
   useEffect(() => {
     const loadData = async () => {
+      console.log('Loading activity data...');
       const activity = await getActivityData();
       const streaks = await getStreakData();
+      const categories = await getCategoryCounts();
+      
+      console.log('Activity data:', activity);
+      console.log('Streak data:', streaks);
+      console.log('Category counts:', categories);
+      
       setActivityData(activity);
       setStreakData(streaks);
+      setCategoryCounts(categories);
     };
     loadData();
   }, []);
-
-  const getActivityLevel = (count: number): string => {
-    if (count === 0) return "bg-gray-200/50 dark:bg-gray-700/50";
-    if (count <= 20) return "bg-emerald-200/70 dark:bg-emerald-800/50";
-    if (count <= 50) return "bg-emerald-300/80 dark:bg-emerald-700/60";
-    if (count <= 100) return "bg-emerald-400/90 dark:bg-emerald-600/70";
-    return "bg-emerald-500 dark:bg-emerald-500";
-  };
 
   const generateCalendarData = () => {
     const today = new Date();
@@ -55,12 +55,12 @@ const ActiveDaysPage: React.FC = () => {
     
     while (currentDay <= today) {
       const dateStr = currentDay.toISOString().split('T')[0];
-      const count = activityData[dateStr] || 0;
+      const activity = activityData[dateStr];
       const isToday = dateStr === today.toISOString().split('T')[0];
       
       days.push({
         date: dateStr,
-        count,
+        activity: activity || { date: dateStr, count: 0, timestamp: 0 },
         isToday,
         dayOfWeek: currentDay.getDay(),
         month: currentDay.getMonth(),
@@ -82,10 +82,42 @@ const ActiveDaysPage: React.FC = () => {
     setMousePosition({ x: e.clientX, y: e.clientY });
   };
 
+  const renderDayIcon = (activity: DailyActivity) => {
+    const category = getSpiritualCategory(activity.count);
+    
+    // For Rogi (0 jaaps), show nothing - keep calendar clean
+    if (category.id === 0) {
+      return (
+        <div className="w-3 h-3 lg:w-4 lg:h-4 rounded-sm bg-gray-200 dark:bg-gray-700">
+        </div>
+      );
+    }
+    
+    // Special handling for Jivanmukta level - use custom image
+    if (category.id === 6) {
+      return (
+        <div className="w-3 h-3 lg:w-4 lg:h-4 rounded-sm overflow-hidden">
+          <img 
+            src="/lovable-uploads/c74d731e-65cc-4acc-94a8-b537d1013a2d.png" 
+            alt="Jivanmukta"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      );
+    }
+    
+    // For other categories, use emoji icons with better visibility
+    return (
+      <div className={`w-3 h-3 lg:w-4 lg:h-4 rounded-sm flex items-center justify-center text-[8px] lg:text-[10px] bg-gradient-to-br ${category.gradient}`}>
+        <span className="text-white drop-shadow-sm">{category.icon}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800 p-4 lg:p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between mb-8 max-w-7xl mx-auto">
         <Button
           onClick={() => navigate('/')}
           variant="ghost"
@@ -95,13 +127,13 @@ const ActiveDaysPage: React.FC = () => {
           Back to Home
         </Button>
         <h1 className="text-2xl lg:text-3xl xl:text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent text-center">
-          Active Days
+          Spiritual Practice Tracker
         </h1>
         <div className="w-28"></div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mb-8 lg:mb-12 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mb-8 max-w-7xl mx-auto">
         <ModernCard className="p-6 lg:p-8 bg-gradient-to-br from-orange-400/20 to-red-500/20 border-orange-300/30 dark:border-orange-600/30" gradient>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -142,15 +174,20 @@ const ActiveDaysPage: React.FC = () => {
         </ModernCard>
       </div>
 
+      {/* Spiritual Journey Levels */}
+      <div className="max-w-7xl mx-auto">
+        <SpiritualJourneyLevels categoryCounts={categoryCounts} />
+      </div>
+
       {/* Calendar Grid */}
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <ModernCard className="p-6 lg:p-8 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-xl border-amber-200/50 dark:border-amber-700/50" gradient>
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-2">
               <Calendar className="w-6 h-6 lg:w-7 lg:h-7 text-amber-600 dark:text-amber-400" />
-              <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Activity Calendar</h2>
+              <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Practice Calendar</h2>
             </div>
-            <p className="text-gray-600 dark:text-gray-400">Your spiritual practice journey over the past year</p>
+            <p className="text-gray-600 dark:text-gray-400">Your spiritual evolution journey over the past year</p>
           </div>
 
           <div className="space-y-4">
@@ -183,31 +220,22 @@ const ActiveDaysPage: React.FC = () => {
                     return (
                       <div
                         key={dayIndex}
-                        className={`w-3 h-3 lg:w-4 lg:h-4 rounded-sm cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative ${
-                          getActivityLevel(dayData.count)
-                        } ${dayData.isToday ? 'ring-2 ring-amber-500' : ''}`}
+                        className={`cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative ${
+                          dayData.isToday ? 'ring-2 ring-amber-500' : ''
+                        }`}
                         onMouseEnter={(e) => {
-                          setHoveredDay({ date: dayData.date, count: dayData.count });
+                          setHoveredDay({ date: dayData.date, activity: dayData.activity });
                           handleMouseMove(e);
                         }}
                         onMouseMove={handleMouseMove}
                         onMouseLeave={() => setHoveredDay(null)}
-                      />
+                      >
+                        {renderDayIcon(dayData.activity)}
+                      </div>
                     );
                   })}
                 </div>
               ))}
-            </div>
-
-            {/* Legend */}
-            <div className="flex items-center gap-2 lg:gap-3 text-xs lg:text-sm text-gray-500 dark:text-gray-400 justify-center">
-              <span>Less</span>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-gray-200/50 dark:bg-gray-700/50 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-200/70 dark:bg-emerald-800/50 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-300/80 dark:bg-emerald-700/60 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-400/90 dark:bg-emerald-600/70 rounded-sm"></div>
-              <div className="w-3 h-3 lg:w-4 lg:h-4 bg-emerald-500 dark:bg-emerald-500 rounded-sm"></div>
-              <span>More</span>
             </div>
           </div>
         </ModernCard>
@@ -219,7 +247,7 @@ const ActiveDaysPage: React.FC = () => {
           className="fixed z-50 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-amber-200/50 dark:border-amber-700/50 rounded-xl px-4 py-3 text-sm pointer-events-none shadow-xl"
           style={{
             left: mousePosition.x + 10,
-            top: mousePosition.y - 50,
+            top: mousePosition.y - 80,
           }}
         >
           <div className="text-gray-900 dark:text-white font-medium mb-1">
@@ -230,9 +258,14 @@ const ActiveDaysPage: React.FC = () => {
               year: 'numeric'
             })}
           </div>
-          <div className="text-amber-600 dark:text-amber-400">
-            {hoveredDay.count} jaaps completed
+          <div className="text-amber-600 dark:text-amber-400 mb-1">
+            {hoveredDay.activity.count} jaaps completed
           </div>
+          {hoveredDay.activity.count > 0 && (
+            <div className="text-xs text-gray-600 dark:text-gray-400">
+              {getSpiritualCategory(hoveredDay.activity.count).sanskritName}
+            </div>
+          )}
         </div>
       )}
     </div>
