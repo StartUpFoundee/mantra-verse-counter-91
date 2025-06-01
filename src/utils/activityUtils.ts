@@ -1,4 +1,3 @@
-
 import { getData, storeData, getAllData, STORES } from './indexedDBUtils';
 
 export interface DailyActivity {
@@ -33,85 +32,85 @@ export const SPIRITUAL_CATEGORIES: SpiritualCategory[] = [
     id: 0,
     name: "Dormant Soul",
     sanskritName: "Rogi (Diseased)",
-    description: "Still untouched by the healing power of Jaap. A soul in slumber.",
-    icon: "🌑",
+    description: "",
+    icon: "", // No icon for Rogi - keep calendar clear
     range: "0 Jaaps",
     minCount: 0,
     maxCount: 0,
     gradient: "from-gray-800 to-gray-600",
-    quote: "Every journey begins with a single step..."
+    quote: ""
   },
   {
     id: 1,
     name: "Pure Beginning",
     sanskritName: "Bhogi (Indulger)",
-    description: "Has started the journey, still attached to worldly pleasures but awakening.",
+    description: "",
     icon: "🍯",
     range: "1-108 Jaaps",
     minCount: 1,
     maxCount: 108,
     gradient: "from-amber-400 to-yellow-500",
-    quote: "The first light of awareness dawns..."
+    quote: ""
   },
   {
     id: 2,
     name: "Noble Path",
     sanskritName: "Yogi (Disciplined Seeker)",
-    description: "Detachment begins. Mind starts aligning with the divine.",
-    icon: "🧘‍♂️",
+    description: "",
+    icon: "🕯️", // Changed from 🧘‍♂️ to candle for distinctiveness
     range: "109-500 Jaaps",
     minCount: 109,
     maxCount: 500,
     gradient: "from-blue-500 to-indigo-600",
-    quote: "Discipline is the bridge between thought and accomplishment..."
+    quote: ""
   },
   {
     id: 3,
     name: "Victory Spirit",
     sanskritName: "Sadhak (Dedicated Practitioner)",
-    description: "Regular practice has begun. Inner clarity arises.",
+    description: "",
     icon: "🕉️",
     range: "501-1000 Jaaps",
     minCount: 501,
     maxCount: 1000,
     gradient: "from-orange-500 to-red-500",
-    quote: "In dedication, the soul finds its strength..."
+    quote: ""
   },
   {
     id: 4,
     name: "Ascending Soul",
     sanskritName: "Tapasvi (One Who Endures Austerity)",
-    description: "Deep commitment. Burning away karma through effort.",
+    description: "",
     icon: "🔥",
     range: "1001-1500 Jaaps",
     minCount: 1001,
     maxCount: 1500,
     gradient: "from-red-600 to-pink-600",
-    quote: "Through fire, the spirit is purified..."
+    quote: ""
   },
   {
     id: 5,
     name: "Divine Radiance",
     sanskritName: "Rishi (Divine Realizer)",
-    description: "Divya Sharir - Has attained the divine body beyond mortality.",
+    description: "",
     icon: "🔱",
     range: "1501-2100 Jaaps",
     minCount: 1501,
     maxCount: 2100,
     gradient: "from-purple-600 to-indigo-700",
-    quote: "The divine light shines through the dedicated soul..."
+    quote: ""
   },
   {
     id: 6,
     name: "Enlightened Master",
     sanskritName: "Jivanmukta (Liberated Soul)",
-    description: "Complete transcendence. Living in divine consciousness while in human form.",
-    icon: "🧘‍♀️",
+    description: "",
+    icon: "⭐", // Changed from 🧘‍♀️ to star for distinctiveness
     range: "2100+ Jaaps",
     minCount: 2101,
     maxCount: Infinity,
     gradient: "from-yellow-400 to-orange-500",
-    quote: "Beyond form, beyond limitation, pure consciousness..."
+    quote: ""
   }
 ];
 
@@ -286,6 +285,29 @@ export const getStreakData = async (): Promise<StreakData> => {
   } catch (error) {
     console.error("Failed to calculate streak data:", error);
     return { currentStreak: 0, maxStreak: 0, totalActiveDays: 0 };
+  }
+};
+
+/**
+ * Clear all activity data - for fresh start
+ */
+export const clearAllActivityData = async (): Promise<void> => {
+  try {
+    // Clear IndexedDB activity data
+    const request = indexedDB.open('MantraCounterDB', 3);
+    
+    request.onsuccess = () => {
+      const db = request.result;
+      if (db.objectStoreNames.contains('activityData')) {
+        const transaction = db.transaction(['activityData'], 'readwrite');
+        const store = transaction.objectStore('activityData');
+        store.clear();
+      }
+    };
+    
+    console.log('All activity data cleared');
+  } catch (error) {
+    console.error('Failed to clear activity data:', error);
   }
 };
 

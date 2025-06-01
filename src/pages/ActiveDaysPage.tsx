@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, Flame, Target, TrendingUp } from "lucide-react";
@@ -27,11 +26,18 @@ const ActiveDaysPage: React.FC = () => {
   const [hoveredDay, setHoveredDay] = useState<{date: string, activity: DailyActivity} | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
+  // Force data refresh when component mounts
   useEffect(() => {
     const loadData = async () => {
+      console.log('Loading activity data...');
       const activity = await getActivityData();
       const streaks = await getStreakData();
       const categories = await getCategoryCounts();
+      
+      console.log('Activity data:', activity);
+      console.log('Streak data:', streaks);
+      console.log('Category counts:', categories);
+      
       setActivityData(activity);
       setStreakData(streaks);
       setCategoryCounts(categories);
@@ -79,6 +85,14 @@ const ActiveDaysPage: React.FC = () => {
   const renderDayIcon = (activity: DailyActivity) => {
     const category = getSpiritualCategory(activity.count);
     
+    // For Rogi (0 jaaps), show nothing - keep calendar clean
+    if (category.id === 0) {
+      return (
+        <div className="w-3 h-3 lg:w-4 lg:h-4 rounded-sm bg-gray-200 dark:bg-gray-700">
+        </div>
+      );
+    }
+    
     // Special handling for Jivanmukta level - use custom image
     if (category.id === 6) {
       return (
@@ -92,10 +106,10 @@ const ActiveDaysPage: React.FC = () => {
       );
     }
     
-    // For other categories, use emoji icons
+    // For other categories, use emoji icons with better visibility
     return (
-      <div className="w-3 h-3 lg:w-4 lg:h-4 rounded-sm flex items-center justify-center text-[8px] lg:text-[10px] bg-white/20">
-        {category.icon}
+      <div className={`w-3 h-3 lg:w-4 lg:h-4 rounded-sm flex items-center justify-center text-[8px] lg:text-[10px] bg-gradient-to-br ${category.gradient}`}>
+        <span className="text-white drop-shadow-sm">{category.icon}</span>
       </div>
     );
   };
