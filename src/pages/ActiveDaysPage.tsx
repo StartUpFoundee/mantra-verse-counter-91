@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, Flame, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getActivityData, getStreakData } from "@/utils/activityUtils";
+import { getActivityData, getStreakData, recordDailyActivity } from "@/utils/activityUtils";
 import ModernCard from "@/components/ModernCard";
 import SpiritualJourneyLevels, { getSpiritualLevel } from "@/components/SpiritualJourneyLevels";
 
@@ -37,6 +37,10 @@ const ActiveDaysPage: React.FC = () => {
       setStreakData(streaks);
     };
     loadData();
+
+    // Set up interval to refresh data every 5 seconds to catch updates
+    const interval = setInterval(loadData, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const getActivityLevel = (count: number): string => {
@@ -57,14 +61,18 @@ const ActiveDaysPage: React.FC = () => {
     const currentYear = new Date().getFullYear();
     const currentDate = new Date();
     
-    // Use current year if selectedYear is in the future
     const yearToShow = selectedYear > currentYear ? currentYear : selectedYear;
-    
-    const startDate = new Date(yearToShow, 0, 1); // January 1st of selected year
-    const endDate = yearToShow === currentYear ? currentDate : new Date(yearToShow, 11, 31); // Dec 31st or today
+    const startDate = new Date(yearToShow, 0, 1);
+    const endDate = yearToShow === currentYear ? currentDate : new Date(yearToShow, 11, 31);
     
     const days = [];
     const currentDay = new Date(startDate);
+    
+    // Add empty cells for days before the first day of the year
+    const firstDayOfWeek = startDate.getDay();
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      days.push(null);
+    }
     
     while (currentDay <= endDate) {
       const dateStr = currentDay.toISOString().split('T')[0];
@@ -90,7 +98,7 @@ const ActiveDaysPage: React.FC = () => {
 
   const calendarDays = generateCalendarData();
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   const handleMouseMove = (e: React.MouseEvent) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
@@ -110,6 +118,17 @@ const ActiveDaysPage: React.FC = () => {
   };
 
   const yearOptions = generateYearOptions();
+
+  // Group calendar days into weeks for proper display
+  const groupDaysIntoWeeks = () => {
+    const weeks = [];
+    for (let i = 0; i < calendarDays.length; i += 7) {
+      weeks.push(calendarDays.slice(i, i + 7));
+    }
+    return weeks;
+  };
+
+  const calendarWeeks = groupDaysIntoWeeks();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800 p-4 lg:p-8">
@@ -201,60 +220,64 @@ const ActiveDaysPage: React.FC = () => {
           </div>
 
           <div className="space-y-4">
+            {/* Month headers */}
+            <div className="grid grid-cols-12 gap-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">
+              {months.map((month, index) => (
+                <div key={month}>{month}</div>
+              ))}
+            </div>
+
             {/* Weekday Labels */}
-            <div className="flex gap-1 lg:gap-2 ml-12 lg:ml-16">
+            <div className="grid grid-cols-7 gap-1 mb-2">
               {weekdays.map((day) => (
-                <div key={day} className="w-6 h-6 lg:w-8 lg:h-8 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center">
-                  {day[0]}
+                <div key={day} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-2">
+                  {day}
                 </div>
               ))}
             </div>
 
             {/* Calendar Grid */}
-            {calendarDays.length > 0 && (
-              <div className="flex gap-1 lg:gap-2 overflow-x-auto pb-4">
-                {Array.from({ length: Math.ceil(calendarDays.length / 7) }, (_, weekIndex) => (
-                  <div key={weekIndex} className="flex flex-col gap-1 lg:gap-2">
-                    {/* Month label */}
-                    {weekIndex === 0 || (calendarDays[weekIndex * 7] && calendarDays[weekIndex * 7].displayDate.getDate() <= 7) ? (
-                      <div className="h-4 lg:h-6 text-xs text-gray-500 dark:text-gray-400 mb-1 lg:mb-2 min-w-[40px] lg:min-w-[60px]">
-                        {calendarDays[weekIndex * 7] && months[calendarDays[weekIndex * 7].month]}
-                      </div>
-                    ) : (
-                      <div className="h-4 lg:h-6 mb-1 lg:mb-2"></div>
-                    )}
+            <div className="space-y-1">
+              {calendarWeeks.map((week, weekIndex) => (
+                <div key={weekIndex} className="grid grid-cols-7 gap-1">
+                  {week.map((dayData, dayIndex) => {
+                    if (!dayData) {
+                      return <div key={`empty-${dayIndex}`} className="w-8 h-8"></div>;
+                    }
                     
-                    {Array.from({ length: 7 }, (_, dayIndex) => {
-                      const dayData = calendarDays[weekIndex * 7 + dayIndex];
-                      if (!dayData) return <div key={dayIndex} className="w-6 h-6 lg:w-8 lg:h-8"></div>;
-                      
-                      const spiritualLevel = getSpiritualLevel(dayData.count);
-                      
-                      return (
-                        <div
-                          key={dayIndex}
-                          className={`w-6 h-6 lg:w-8 lg:h-8 rounded-sm cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative flex items-center justify-center text-xs lg:text-sm ${
-                            getActivityLevel(dayData.count)
-                          } ${dayData.isToday ? 'ring-2 ring-amber-500' : ''}`}
-                          onMouseEnter={(e) => {
-                            setHoveredDay({ date: dayData.date, count: dayData.count });
-                            handleMouseMove(e);
-                          }}
-                          onMouseMove={handleMouseMove}
-                          onMouseLeave={() => setHoveredDay(null)}
-                        >
-                          {dayData.count > 0 && spiritualLevel.icon && (
-                            <span className="filter drop-shadow-sm">
-                              {spiritualLevel.icon}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
+                    const spiritualLevel = getSpiritualLevel(dayData.count);
+                    
+                    return (
+                      <div
+                        key={dayData.date}
+                        className={`w-8 h-8 rounded-sm cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative flex items-center justify-center text-xs ${
+                          getActivityLevel(dayData.count)
+                        } ${dayData.isToday ? 'ring-2 ring-amber-500' : ''}`}
+                        onMouseEnter={(e) => {
+                          setHoveredDay({ date: dayData.date, count: dayData.count });
+                          handleMouseMove(e);
+                        }}
+                        onMouseMove={handleMouseMove}
+                        onMouseLeave={() => setHoveredDay(null)}
+                      >
+                        {dayData.count > 0 && spiritualLevel.icon ? (
+                          <span className="filter drop-shadow-sm text-xs">
+                            {spiritualLevel.icon}
+                          </span>
+                        ) : (
+                          dayData.count > 0 && (
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                          )
+                        )}
+                        {dayData.isToday && (
+                          <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-amber-500 rounded-full"></div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         </ModernCard>
       </div>

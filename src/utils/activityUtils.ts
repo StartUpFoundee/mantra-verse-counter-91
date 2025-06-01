@@ -1,3 +1,4 @@
+
 import { getData, storeData, getAllData, STORES } from './indexedDBUtils';
 
 export interface DailyActivity {
@@ -31,6 +32,7 @@ export const recordDailyActivity = async (count: number = 1): Promise<void> => {
     };
     
     await storeData(STORES.activityData, activityData, today);
+    console.log(`Recorded ${count} jaaps for ${today}. Total today: ${activityData.count}`);
   } catch (error) {
     console.error("Failed to record daily activity:", error);
   }
@@ -61,29 +63,32 @@ export const getActivityData = async (): Promise<{[date: string]: number}> => {
 export const getStreakData = async (): Promise<StreakData> => {
   try {
     const activityData = await getActivityData();
-    const dates = Object.keys(activityData).sort();
+    const activeDates = Object.keys(activityData).filter(date => activityData[date] > 0).sort();
     
-    if (dates.length === 0) {
+    if (activeDates.length === 0) {
       return { currentStreak: 0, maxStreak: 0, totalActiveDays: 0 };
     }
     
     // Calculate total active days
-    const totalActiveDays = dates.length;
+    const totalActiveDays = activeDates.length;
     
     // Calculate current streak (working backwards from today)
     const today = new Date().toISOString().split('T')[0];
     let currentStreak = 0;
     let checkDate = new Date();
     
+    // Check if today has activity first
+    if (activityData[today] && activityData[today] > 0) {
+      currentStreak = 1;
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+    
+    // Count consecutive days backwards
     while (true) {
       const dateStr = checkDate.toISOString().split('T')[0];
       if (activityData[dateStr] && activityData[dateStr] > 0) {
         currentStreak++;
         checkDate.setDate(checkDate.getDate() - 1);
-      } else if (dateStr === today) {
-        // If today has no activity, start checking from yesterday
-        checkDate.setDate(checkDate.getDate() - 1);
-        continue;
       } else {
         break;
       }
@@ -94,7 +99,7 @@ export const getStreakData = async (): Promise<StreakData> => {
     let tempStreak = 0;
     let previousDate: Date | null = null;
     
-    dates.forEach(dateStr => {
+    activeDates.forEach(dateStr => {
       const currentDate = new Date(dateStr);
       
       if (previousDate) {
