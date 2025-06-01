@@ -15,7 +15,7 @@ export const initializeDatabase = (): Promise<void> => {
       return;
     }
 
-    const request = indexedDB.open('MantraCounterDB', 2);
+    const request = indexedDB.open('MantraCounterDB', 3);
 
     request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
       const db = (event.target as IDBRequest).result as IDBDatabase;
@@ -29,6 +29,13 @@ export const initializeDatabase = (): Promise<void> => {
         // Version 2, add index for date
         const countsStore = (event.target as IDBRequest).transaction.objectStore('counts');
         countsStore.createIndex('date', 'date', { unique: false });
+      }
+
+      if (event.oldVersion < 3) {
+        // Version 3, add activityData store
+        if (!db.objectStoreNames.contains('activityData')) {
+          db.createObjectStore('activityData');
+        }
       }
     };
 
