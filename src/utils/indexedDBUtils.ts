@@ -285,3 +285,28 @@ export const clearAllData = async (): Promise<void> => {
     console.error('Failed to clear all data:', error);
   }
 };
+
+export const syncTodayActivityData = async (): Promise<void> => {
+  try {
+    const { recordDailyActivity } = await import('./activityUtils');
+    const todayCount = await getTodayCount();
+    
+    if (todayCount > 0) {
+      // This will update the activity data with current count
+      await recordDailyActivity(0); // Pass 0 to avoid double counting
+      
+      // Update the activity data directly with today's actual count
+      const today = new Date().toISOString().split('T')[0];
+      const activityData = {
+        date: today,
+        count: todayCount,
+        timestamp: Date.now()
+      };
+      
+      await storeData(STORES.activityData, activityData, today);
+      console.log(`Synced today's activity: ${todayCount} jaaps`);
+    }
+  } catch (error) {
+    console.error('Failed to sync today activity data:', error);
+  }
+};
