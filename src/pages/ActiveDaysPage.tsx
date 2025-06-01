@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, Flame, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getActivityData, getStreakData } from "@/utils/activityUtils";
 import ModernCard from "@/components/ModernCard";
+import SpiritualJourneyLevels from "@/components/SpiritualJourneyLevels";
 
 interface ActivityData {
   [date: string]: number;
@@ -99,6 +99,9 @@ const ActiveDaysPage: React.FC = () => {
         </h1>
         <div className="w-28"></div>
       </div>
+
+      {/* Spiritual Journey Levels */}
+      <SpiritualJourneyLevels activityData={activityData} />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mb-8 lg:mb-12 max-w-6xl mx-auto">
