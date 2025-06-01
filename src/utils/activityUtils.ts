@@ -52,12 +52,20 @@ export const getActivityData = async (): Promise<{[date: string]: number}> => {
       activityMap[activity.date] = activity.count;
     });
     
-    // Also get today's count from the main counter system
+    // Always get today's count from the main counter system and sync it
     const todayCount = await getTodayCount();
     const today = new Date().toISOString().split('T')[0];
     
     if (todayCount > 0) {
       activityMap[today] = todayCount;
+      // Sync today's count to activity data
+      await recordDailyActivity(0); // This will update with current count
+      const activityData: DailyActivity = {
+        date: today,
+        count: todayCount,
+        timestamp: Date.now()
+      };
+      await storeData(STORES.activityData, activityData, today);
     }
     
     return activityMap;
@@ -79,7 +87,7 @@ export const getStreakData = async (): Promise<StreakData> => {
       return { currentStreak: 0, maxStreak: 0, totalActiveDays: 0 };
     }
     
-    // Calculate total active days
+    // Calculate total active days - this should be the count of unique dates with activity > 0
     const totalActiveDays = activeDates.length;
     
     // Calculate current streak (working backwards from today)
@@ -129,6 +137,8 @@ export const getStreakData = async (): Promise<StreakData> => {
     });
     
     maxStreak = Math.max(maxStreak, tempStreak);
+    
+    console.log(`Streak data: current=${currentStreak}, max=${maxStreak}, total=${totalActiveDays}`);
     
     return {
       currentStreak,

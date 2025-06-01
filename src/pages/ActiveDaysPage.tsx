@@ -85,9 +85,17 @@ const ActiveDaysPage: React.FC = () => {
   // Generate simple calendar for the selected year
   const generateCalendarData = () => {
     const year = selectedYear;
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    
+    // If selected year is current year, only show months up to current month
+    // If selected year is past year, show all 12 months
+    const maxMonth = (year === currentYear) ? currentMonth : 11;
+    
     const months = [];
     
-    for (let month = 0; month < 12; month++) {
+    for (let month = 0; month <= maxMonth; month++) {
       const firstDay = new Date(year, month, 1);
       const lastDay = new Date(year, month + 1, 0);
       const daysInMonth = lastDay.getDate();
