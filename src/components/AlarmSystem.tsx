@@ -19,7 +19,7 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
 }) => {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
-  const synthsRef = useRef<Tone.Synth[]>([]);
+  const synthsRef = useRef<any[]>([]);
   const vibrationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoStopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [timeLeft, setTimeLeft] = useState(120); // 2 minutes auto-stop
@@ -63,9 +63,8 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
     synthsRef.current.forEach(synth => synth.dispose());
     synthsRef.current = [];
 
-    // Temple Bell Layer - Deep metallic bell sounds
+    // Temple Bell Layer - Using MetalSynth with correct properties
     const bellSynth = new Tone.MetalSynth({
-      frequency: 200,
       envelope: {
         attack: 0.001,
         decay: 1.4,
