@@ -1,140 +1,216 @@
-import { useState, useEffect, useCallback } from 'react';
-import { DeviceAccountManager } from '@/utils/deviceAccountManager';
+
+import { useState, useEffect } from 'react';
 import { UserAccount } from '@/utils/advancedIdUtils';
+import { DeviceAccountManager } from '@/utils/deviceAccountManager';
+import { getBulletproofDeviceId } from '@/utils/enhancedDeviceFingerprint';
+import { AccountDataManager } from '@/utils/accountDataManager';
+
+export interface BulletproofAuthState {
+  isAuthenticated: boolean;
+  currentUser: UserAccount | null;
+  isLoading: boolean;
+  deviceId: string | null;
+}
 
 export const useBulletproofAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [authState, setAuthState] = useState<BulletproofAuthState>({
+    isAuthenticated: false,
+    currentUser: null,
+    isLoading: true,
+    deviceId: null
+  });
 
-  // Check if any accounts exist on this device (but don't auto-login)
-  const checkPersistedSession = useCallback(async (): Promise<boolean> => {
-    try {
-      setIsLoading(true);
-      
-      // Get all accounts on this device
-      const deviceAccounts = await DeviceAccountManager.getDeviceAccounts();
-      const hasAccounts = deviceAccounts.some(slot => !slot.isEmpty);
-      
-      // Never auto-login - always require explicit authentication
-      setIsAuthenticated(false);
-      setCurrentUser(null);
-      
-      return hasAccounts;
-    } catch (error) {
-      console.error('Error checking persisted session:', error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
+  // Initialize bulletproof authentication
+  useEffect(() => {
+    initializeBulletproofAuth();
   }, []);
 
-  // Create a new account
-  const createAccount = useCallback(async (name: string, dob: string, password: string): Promise<void> => {
-    try {
-      setIsLoading(true);
+  // Cross-tab synchronization
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'current_authenticated_account') {
+        if (event.newValue) {
+          try {
+            const account = JSON.parse(event.newValue);
+            setAuthState(prev => ({
+              ...prev,
+              isAuthenticated: true,
+              currentUser: account
+            }));
+            // Update account context for the new account
+            AccountDataManager.setCurrentAccount(account.id);
+          } catch (e) {
+            console.error('Error parsing auth change:', e);
+          }
+        } else {
+          setAuthState(prev => ({
+            ...prev,
+            isAuthenticated: false,
+            currentUser: null
+          }));
+          // Clear account context
+          AccountDataManager.clearCurrentAccount();
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // BroadcastChannel for same-tab communication
+    if ('BroadcastChannel' in window) {
+      const channel = new BroadcastChannel('mantra-verse-auth');
       
-      const { account } = await DeviceAccountManager.createAccountOnDevice(name, dob, password);
-      
-      // After creation, don't auto-login - require explicit login
-      console.log(`Account created successfully: ${account.name} (${account.id})`);
-      
-    } catch (error) {
-      console.error('Failed to create account:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+      channel.onmessage = (event) => {
+        if (event.data.type === 'auth-change') {
+          if (event.data.account) {
+            setAuthState(prev => ({
+              ...prev,
+              isAuthenticated: true,
+              currentUser: event.data.account
+            }));
+            // Update account context for the new account
+            AccountDataManager.setCurrentAccount(event.data.account.id);
+          } else {
+            setAuthState(prev => ({
+              ...prev,
+              isAuthenticated: false,
+              currentUser: null
+            }));
+            // Clear account context
+            AccountDataManager.clearCurrentAccount();
+          }
+        }
+      };
+
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+        channel.close();
+      };
     }
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
-  // Login to an existing account
-  const login = useCallback(async (slot: number, password: string): Promise<void> => {
+  const initializeBulletproofAuth = async () => {
     try {
-      setIsLoading(true);
+      setAuthState(prev => ({ ...prev, isLoading: true }));
+      
+      // Get bulletproof device ID
+      const deviceId = await getBulletproofDeviceId();
+      
+      // Check for current account
+      const currentAccount = await DeviceAccountManager.getCurrentAccount();
+      
+      if (currentAccount) {
+        // Set account context for data access
+        AccountDataManager.setCurrentAccount(currentAccount.id);
+        console.log(`Initialized with account context: ${currentAccount.id}`);
+      }
+      
+      setAuthState({
+        isAuthenticated: !!currentAccount,
+        currentUser: currentAccount,
+        isLoading: false,
+        deviceId
+      });
+      
+    } catch (error) {
+      console.error('Error initializing bulletproof auth:', error);
+      setAuthState(prev => ({
+        ...prev,
+        isLoading: false,
+        isAuthenticated: false,
+        currentUser: null
+      }));
+    }
+  };
+
+  const login = async (slot: number, password: string): Promise<boolean> => {
+    try {
+      setAuthState(prev => ({ ...prev, isLoading: true }));
       
       const account = await DeviceAccountManager.switchToAccount(slot, password);
       
-      setIsAuthenticated(true);
-      setCurrentUser(account);
+      setAuthState(prev => ({
+        ...prev,
+        isAuthenticated: true,
+        currentUser: account,
+        isLoading: false
+      }));
       
-      console.log(`Successfully logged in: ${account.name}`);
+      console.log(`Successfully logged in as: ${account.name} (${account.id})`);
       
+      return true;
     } catch (error) {
-      console.error('Login failed:', error);
+      setAuthState(prev => ({ ...prev, isLoading: false }));
       throw error;
-    } finally {
-      setIsLoading(false);
     }
-  }, []);
+  };
 
-  // Logout and clear session
-  const logout = useCallback(async (): Promise<void> => {
+  const logout = async () => {
     try {
+      const currentAccountId = authState.currentUser?.id;
+      
+      // Save current session data before logout
+      if (currentAccountId) {
+        console.log(`Saving session data for account: ${currentAccountId}`);
+        // This will be handled by the DeviceAccountManager.clearCurrentAccount
+      }
+      
       await DeviceAccountManager.clearCurrentAccount();
       
-      setIsAuthenticated(false);
-      setCurrentUser(null);
+      setAuthState(prev => ({
+        ...prev,
+        isAuthenticated: false,
+        currentUser: null
+      }));
       
       console.log('Successfully logged out');
-      
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Error during logout:', error);
       throw error;
     }
-  }, []);
+  };
 
-  // Clear any automatic session restoration
-  const clearSession = useCallback(async (): Promise<void> => {
+  const createAccount = async (name: string, dob: string, password: string): Promise<UserAccount> => {
     try {
-      // Clear any stored session data but keep account data
-      localStorage.removeItem('current_authenticated_account');
-      sessionStorage.removeItem('current_authenticated_account');
+      const { account } = await DeviceAccountManager.createAccountOnDevice(name, dob, password);
       
-      // Clear current account context but don't delete account data
-      await DeviceAccountManager.clearCurrentAccount();
+      setAuthState(prev => ({
+        ...prev,
+        isAuthenticated: true,
+        currentUser: account
+      }));
       
-      setIsAuthenticated(false);
-      setCurrentUser(null);
+      console.log(`Created and logged in as new account: ${account.name} (${account.id})`);
       
+      return account;
     } catch (error) {
-      console.error('Failed to clear session:', error);
+      throw error;
     }
-  }, []);
+  };
 
-  // Import account from QR code
-  const importAccount = useCallback(async (qrData: string): Promise<void> => {
+  const importAccount = async (qrData: string): Promise<UserAccount> => {
     try {
-      setIsLoading(true);
-      
       const { account } = await DeviceAccountManager.importAccountToDevice(qrData);
       
-      console.log(`Account imported successfully: ${account.name}`);
+      // Don't auto-login imported account, just return it
+      console.log(`Successfully imported account: ${account.name} (${account.id})`);
       
+      return account;
     } catch (error) {
-      console.error('Failed to import account:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
-  }, []);
-
-  // Initialize auth state on mount
-  useEffect(() => {
-    checkPersistedSession();
-  }, [checkPersistedSession]);
+  };
 
   return {
-    // State
-    isAuthenticated,
-    currentUser,
-    isLoading,
-    
-    // Methods
-    createAccount,
+    ...authState,
     login,
     logout,
-    checkPersistedSession,
-    clearSession,
-    importAccount
+    createAccount,
+    importAccount,
+    refreshAuth: initializeBulletproofAuth
   };
 };

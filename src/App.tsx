@@ -1,93 +1,108 @@
 
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useBulletproofAuth } from '@/hooks/useBulletproofAuth';
-import IdentitySystem from '@/components/IdentitySystem';
-import HomePage from '@/pages/HomePage';
-import ActiveDaysPage from '@/pages/ActiveDaysPage';
-import WelcomeScreen from '@/components/WelcomeScreen';
-import { Toaster } from '@/components/ui/sonner';
+import React, { useEffect, useState } from "react";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import HomePage from "./pages/HomePage";
+import AudioCountPage from "./pages/AudioCountPage";
+import ManualCountPage from "./pages/ManualCountPage";
+import SpiritualIdPage from "./pages/SpiritualIdPage";
+import IdentityGuidePage from "./pages/IdentityGuidePage";
+import ActiveDaysPage from "./pages/ActiveDaysPage";
+import NotFound from "./pages/NotFound";
+import IdentitySystem from "./components/IdentitySystem";
+import { initializeDatabase } from "./utils/indexedDBUtils";
+import { useBulletproofAuth } from "./hooks/useBulletproofAuth";
 
-function App() {
-  const { isAuthenticated, isLoading, checkPersistedSession, clearSession } = useBulletproofAuth();
-  const [showIdentitySystem, setShowIdentitySystem] = useState(false);
-  const [hasCheckedSession, setHasCheckedSession] = useState(false);
+const queryClient = new QueryClient();
 
+const AppContent: React.FC = () => {
+  const { isAuthenticated, isLoading, currentUser, deviceId } = useBulletproofAuth();
+  const [dbInitialized, setDbInitialized] = useState(false);
+  const [initializing, setInitializing] = useState(true);
+
+  // Initialize IndexedDB when the app starts
   useEffect(() => {
-    const initializeAuth = async () => {
-      // Always clear any automatic session restoration
-      // Users must explicitly login each time they return to the website
-      await clearSession();
-      
-      // Check if any accounts exist on this device
-      const hasAccounts = await checkPersistedSession();
-      
-      if (hasAccounts) {
-        // If accounts exist, show the identity system (login required)
-        setShowIdentitySystem(true);
-      } else {
-        // If no accounts exist, show welcome screen to create accounts
-        setShowIdentitySystem(false);
+    const init = async () => {
+      try {
+        await initializeDatabase();
+        setDbInitialized(true);
+      } catch (error) {
+        console.error("Database initialization failed:", error);
+        setDbInitialized(true); // Continue anyway with localStorage fallback
       }
-      
-      setHasCheckedSession(true);
     };
-
-    initializeAuth();
+    init();
   }, []);
 
-  const handleAuthSuccess = () => {
-    setShowIdentitySystem(false);
-  };
+  // Wait for both database and auth to initialize
+  useEffect(() => {
+    if (dbInitialized && !isLoading) {
+      setInitializing(false);
+    }
+  }, [dbInitialized, isLoading]);
 
-  const handleLogout = async () => {
-    await clearSession();
-    setShowIdentitySystem(true);
-  };
-
-  // Show loading while checking authentication state
-  if (isLoading || !hasCheckedSession) {
+  // Show loading screen while initializing
+  if (initializing) {
     return (
-      <Router>
-        <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-amber-200 dark:border-amber-800 rounded-full animate-spin mx-auto mb-4"></div>
-            <div className="text-amber-600 dark:text-amber-400 text-lg font-medium">
-              Loading your spiritual journey...
-            </div>
-          </div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
+        <div className="mb-6 text-amber-600 dark:text-amber-400 text-xl font-medium">
+          {!dbInitialized ? 'Initializing database...' : 'Identifying your device...'}
         </div>
-      </Router>
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-amber-200 dark:border-amber-800 rounded-full animate-spin"></div>
+          <div className="absolute top-0 left-0 w-16 h-16 border-4 border-transparent border-t-amber-500 rounded-full animate-spin"></div>
+        </div>
+        {currentUser && (
+          <div className="mt-4 text-sm text-gray-600 dark:text-gray-300">
+            Welcome back, {currentUser.name}
+          </div>
+        )}
+        {deviceId && (
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 font-mono">
+            Device: {deviceId}
+          </div>
+        )}
+      </div>
     );
   }
 
+  // Show identity system if not authenticated
+  if (!isAuthenticated) {
+    return <IdentitySystem onAuthSuccess={() => {
+      // Force navigation to home after successful auth
+      window.location.href = '/';
+    }} />;
+  }
+
+  // Show main app if authenticated
   return (
-    <Router>
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
-        {/* If user is not authenticated, show identity system or welcome screen */}
-        {!isAuthenticated ? (
-          <>
-            {showIdentitySystem ? (
-              <IdentitySystem onAuthSuccess={handleAuthSuccess} />
-            ) : (
-              <WelcomeScreen />
-            )}
-            <Toaster />
-          </>
-        ) : (
-          /* User is authenticated, show the main app with routes */
-          <>
-            <Routes>
-              <Route path="/" element={<HomePage onLogout={handleLogout} />} />
-              <Route path="/active-days" element={<ActiveDaysPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-            <Toaster />
-          </>
-        )}
-      </div>
-    </Router>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/audio" element={<AudioCountPage />} />
+      <Route path="/manual" element={<ManualCountPage />} />
+      <Route path="/spiritual-id" element={<SpiritualIdPage />} />
+      <Route path="/identity-guide" element={<IdentityGuidePage />} />
+      <Route path="/active-days" element={<ActiveDaysPage />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
-}
+};
+
+const App: React.FC = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
