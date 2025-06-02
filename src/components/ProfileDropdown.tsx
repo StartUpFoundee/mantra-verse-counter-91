@@ -13,9 +13,7 @@ const ProfileDropdown: React.FC = () => {
   const { currentUser, logout } = useBulletproofAuth();
   const navigate = useNavigate();
 
-  const handleLogout = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleLogout = async () => {
     try {
       await logout();
       toast.success('Logged out successfully');
@@ -25,15 +23,11 @@ const ProfileDropdown: React.FC = () => {
     }
   };
 
-  const handleProfileClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleProfileClick = () => {
     navigate('/spiritual-id');
   };
 
-  const handleAccountSettings = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleAccountSettings = () => {
     navigate('/identity-guide');
   };
 

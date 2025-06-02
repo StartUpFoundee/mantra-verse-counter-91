@@ -62,14 +62,14 @@ const AlarmSettingsDialog: React.FC<AlarmSettingsDialogProps> = ({ children }) =
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md bg-white/95 dark:bg-zinc-800/95 backdrop-blur-md">
+      <DialogContent className="w-[95vw] max-w-md mx-auto bg-white/95 dark:bg-zinc-800/95 backdrop-blur-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+          <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white text-lg">
             Alarm Settings
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6">
+        <div className="space-y-4 px-1">
           {/* Alarm Sound */}
           <div>
             <Label className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-200">Alarm Sound</Label>
@@ -83,7 +83,10 @@ const AlarmSettingsDialog: React.FC<AlarmSettingsDialogProps> = ({ children }) =
               <SelectContent className="bg-white dark:bg-zinc-800">
                 {ALARM_SONGS.map(song => (
                   <SelectItem key={song.id} value={song.id}>
-                    {song.name} - {song.description}
+                    <div className="flex flex-col">
+                      <span className="font-medium">{song.name}</span>
+                      <span className="text-xs text-gray-500">{song.description}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -126,7 +129,7 @@ const AlarmSettingsDialog: React.FC<AlarmSettingsDialogProps> = ({ children }) =
           </div>
 
           {/* Toggle Controls */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {alarmSettings.audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
