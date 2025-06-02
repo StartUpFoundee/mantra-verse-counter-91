@@ -84,6 +84,18 @@ const MantraCounter: React.FC = () => {
     setShowTimerComplete(false);
   };
 
+  const handleTimerComplete = () => {
+    setShowTimerComplete(true);
+    toast.success("🔔 Timer completed! Your meditation session is done.", {
+      duration: 5000,
+    });
+  };
+
+  const resetTimer = () => {
+    setTimerMinutes(null);
+    setShowTimerComplete(false);
+  };
+
   const requestMicPermission = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
