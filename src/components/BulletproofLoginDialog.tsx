@@ -34,11 +34,16 @@ const BulletproofLoginDialog: React.FC<BulletproofLoginDialogProps> = ({
     setIsLogging(true);
     try {
       await login(targetSlot, password);
-      toast.success('Login successful!');
-      onSuccess();
+      toast.success('Login successful! Welcome back!');
+      
+      // Instead of calling onSuccess which might redirect to login,
+      // directly navigate to the main app
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
+      
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Login failed');
-    } finally {
       setIsLogging(false);
     }
   };

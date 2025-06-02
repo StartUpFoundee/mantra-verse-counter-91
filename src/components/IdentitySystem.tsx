@@ -33,8 +33,9 @@ const IdentitySystem: React.FC<IdentitySystemProps> = ({ onAuthSuccess }) => {
 
   const handleAccountCreated = (accountCreated: boolean) => {
     if (accountCreated) {
-      // Account created successfully, redirect to login for that slot
-      setCurrentView('login');
+      // Account was created and user is automatically logged in
+      // No need to redirect to login, the user is already authenticated
+      onAuthSuccess();
     } else {
       // User cancelled or error occurred, go back to selector
       setCurrentView('selector');
@@ -43,8 +44,7 @@ const IdentitySystem: React.FC<IdentitySystemProps> = ({ onAuthSuccess }) => {
   };
 
   const handleLoginSuccess = () => {
-    setCurrentView('selector');
-    setSelectedSlot(null);
+    // User successfully logged in, trigger auth success
     onAuthSuccess();
   };
 

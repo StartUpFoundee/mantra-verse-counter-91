@@ -1,163 +1,83 @@
 
-import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getUserData, logoutUser } from "@/utils/spiritualIdUtils";
-import { UserRound, Copy, Download, LogOut, Settings } from "lucide-react";
-import { toast } from "@/components/ui/sonner";
-import ModernCard from "./ModernCard";
-import IdManagementDialog from "./IdManagementDialog";
+import React from 'react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { User, LogOut, Settings, Key, Shield } from 'lucide-react';
+import { useBulletproofAuth } from '@/hooks/useBulletproofAuth';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui/sonner';
+import ChangePasswordDialog from './ChangePasswordDialog';
 
-interface ProfileDropdownProps {
-  onClose: () => void;
-}
-
-const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onClose }) => {
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const [userData, setUserData] = useState<any>(null);
-  const [showIdDialog, setShowIdDialog] = useState(false);
+const ProfileDropdown: React.FC = () => {
+  const { currentUser, logout } = useBulletproofAuth();
   const navigate = useNavigate();
-  const [showIdCopy, setShowIdCopy] = useState(false);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    // Get user data
-    const currentUserData = getUserData();
-    setUserData(currentUserData);
-    
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [onClose]);
-
-  const handleLogout = () => {
-    logoutUser();
-    onClose();
-    navigate("/spiritual-id"); // Take user to spiritual-id page after logout
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Logged out successfully');
+      navigate('/');
+    } catch (error) {
+      toast.error('Failed to logout');
+    }
   };
 
-  const handleCopyId = () => {
-    if (!userData?.id) return;
-    
-    navigator.clipboard.writeText(userData.id)
-      .then(() => {
-        toast("ID Copied", {
-          description: "Your spiritual ID has been copied to clipboard"
-        });
-      })
-      .catch(err => {
-        toast("Copy Failed", {
-          description: "Could not copy to clipboard"
-        });
-      });
+  const getInitials = (name: string): string => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
-  const handleExportIdentity = () => {
-    if (!userData) return;
-    
-    const dataStr = JSON.stringify(userData, null, 2);
-    const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
-    
-    const exportFileDefaultName = `spiritual-identity-${userData.id.substring(0, 8)}.json`;
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-    
-    toast("Identity Exported", {
-      description: "Your spiritual identity data has been downloaded."
-    });
-    
-    onClose();
-  };
-
-  const toggleIdCopy = () => {
-    setShowIdCopy(!showIdCopy);
-  };
-
-  const handleIdManagement = () => {
-    setShowIdDialog(true);
-  };
-
-  if (!userData) return null;
+  if (!currentUser) {
+    return null;
+  }
 
   return (
-    <>
-      <div 
-        ref={dropdownRef}
-        className="absolute top-full right-0 mt-2 w-64 z-50"
-      >
-        <ModernCard className="p-0 bg-white/95 dark:bg-zinc-800/95 backdrop-blur-xl border-amber-200/50 dark:border-amber-700/50 shadow-2xl" gradient>
-          <div className="px-4 py-3 border-b border-amber-200/30 dark:border-amber-700/30">
-            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">{userData.name}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">ID: {userData.id.substring(0, 20)}...</p>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-white text-sm font-bold">
+              {getInitials(currentUser.name)}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{currentUser.name}</p>
+            <p className="text-xs leading-none text-muted-foreground font-mono">
+              {currentUser.id.slice(0, 20)}...
+            </p>
           </div>
-          
-          <ul className="py-1">
-            <li>
-              {showIdCopy ? (
-                <div className="px-4 py-3 flex items-center justify-between">
-                  <p className="text-sm text-amber-600 dark:text-amber-400 truncate">{userData?.id.substring(0, 15)}...</p>
-                  <button 
-                    className="ml-2 p-1.5 rounded-full hover:bg-amber-500/20 transition-colors duration-200"
-                    onClick={handleCopyId}
-                  >
-                    <Copy size={16} className="text-amber-600 dark:text-amber-400" />
-                  </button>
-                </div>
-              ) : (
-                <button 
-                  className="flex items-center w-full px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-amber-50/50 dark:hover:bg-amber-900/20 transition-colors duration-200"
-                  onClick={toggleIdCopy}
-                >
-                  <UserRound size={16} className="mr-3 text-amber-600 dark:text-amber-400" />
-                  View ID
-                </button>
-              )}
-            </li>
-            <li>
-              <button 
-                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-amber-50/50 dark:hover:bg-amber-900/20 transition-colors duration-200"
-                onClick={handleIdManagement}
-              >
-                <Settings size={16} className="mr-3 text-amber-600 dark:text-amber-400" />
-                Manage ID
-              </button>
-            </li>
-            <li>
-              <button 
-                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-amber-50/50 dark:hover:bg-amber-900/20 transition-colors duration-200"
-                onClick={handleExportIdentity}
-              >
-                <Download size={16} className="mr-3 text-amber-600 dark:text-amber-400" />
-                Save Identity
-              </button>
-            </li>
-            <li className="border-t border-amber-200/30 dark:border-amber-700/30 mt-1">
-              <button 
-                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-red-50/50 dark:hover:bg-red-900/20 transition-colors duration-200"
-                onClick={handleLogout}
-              >
-                <LogOut size={16} className="mr-3 text-red-500 dark:text-red-400" />
-                <span className="text-red-600 dark:text-red-400">Logout</span>
-              </button>
-            </li>
-          </ul>
-        </ModernCard>
-      </div>
-      
-      <IdManagementDialog 
-        open={showIdDialog} 
-        onOpenChange={setShowIdDialog}
-      />
-    </>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => navigate('/spiritual-id')}>
+          <User className="mr-2 h-4 w-4" />
+          <span>Profile</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/identity-guide')}>
+          <Shield className="mr-2 h-4 w-4" />
+          <span>Account Settings</span>
+        </DropdownMenuItem>
+        <ChangePasswordDialog>
+          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+            <Key className="mr-2 h-4 w-4" />
+            <span>Change Password</span>
+          </DropdownMenuItem>
+        </ChangePasswordDialog>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleLogout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -94,12 +93,18 @@ const MultiStepAccountCreation: React.FC<MultiStepAccountCreationProps> = ({
   const handleCreateAccount = async () => {
     setIsCreating(true);
     try {
+      // Create account - this automatically logs the user in
       await createAccount(formData.name.trim(), formData.dob, formData.password);
-      toast.success('Account created successfully! Please login to continue.');
-      onComplete(true);
+      toast.success('Account created successfully! Welcome to Mantra Verse!');
+      
+      // Instead of redirecting to login, directly complete with success
+      // The useBulletproofAuth hook already logs in the user after creation
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
+      
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create account');
-    } finally {
       setIsCreating(false);
     }
   };
@@ -281,7 +286,7 @@ const MultiStepAccountCreation: React.FC<MultiStepAccountCreationProps> = ({
               {isCreating ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Creating...
+                  Creating Account...
                 </div>
               ) : currentStep < totalSteps ? (
                 <>
