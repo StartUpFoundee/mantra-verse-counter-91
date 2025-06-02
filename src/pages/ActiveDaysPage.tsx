@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, Flame, Target, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Flame, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getActivityData, getStreakData } from "@/utils/activityUtils";
-import { getTodayCount } from "@/utils/indexedDBUtils";
 import ModernCard from "@/components/ModernCard";
-import SpiritualJourneyLevels, { getSpiritualLevel } from "@/components/SpiritualJourneyLevels";
+import SpiritualJourneyLevels from "@/components/SpiritualJourneyLevels";
+import PracticeCalendar from "@/components/PracticeCalendar";
+import EnhancedTooltip from "@/components/EnhancedTooltip";
 
 interface ActivityData {
   [date: string]: number;
@@ -79,62 +80,8 @@ const ActiveDaysPage: React.FC = () => {
 
   const yearOptions = generateYearOptions();
 
-  // Generate calendar for selected month and year
-  const generateCalendarData = () => {
-    const year = selectedYear;
-    const month = selectedMonth;
-    const currentDate = new Date();
-    const isCurrentMonth = year === currentDate.getFullYear() && month === currentDate.getMonth();
-    
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
-    
-    const days = [];
-    
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null);
-    }
-    
-    // Add all days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      const dateStr = date.toISOString().split('T')[0];
-      const count = activityData[dateStr] || 0;
-      const today = new Date().toISOString().split('T')[0];
-      const isToday = dateStr === today;
-      
-      // Don't show future dates in current month
-      if (isCurrentMonth && day > currentDate.getDate()) {
-        break;
-      }
-      
-      days.push({
-        date: dateStr,
-        count,
-        isToday,
-        day
-      });
-    }
-    
-    return {
-      monthName: new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-      days
-    };
-  };
-
-  const calendarData = generateCalendarData();
-  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
   const handleMouseMove = (e: React.MouseEvent) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
-  };
-
-  const getActivityLevel = (count: number): string => {
-    if (count === 0) return "bg-gray-200/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600";
-    return "bg-emerald-200/70 dark:bg-emerald-800/50 border border-emerald-300 dark:border-emerald-600";
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -163,15 +110,10 @@ const ActiveDaysPage: React.FC = () => {
     }
   };
 
-  const canNavigatePrev = () => {
-    return selectedYear > getJourneyStartYear() || 
-           (selectedYear === getJourneyStartYear() && selectedMonth > 0);
-  };
-
-  const canNavigateNext = () => {
-    const currentDate = new Date();
-    return selectedYear < currentDate.getFullYear() || 
-           (selectedYear === currentDate.getFullYear() && selectedMonth < currentDate.getMonth());
+  const handleYearChange = (newYear: number) => {
+    setSelectedYear(newYear);
+    // Reset to January when changing years, or current month if current year
+    setSelectedMonth(newYear === new Date().getFullYear() ? new Date().getMonth() : 0);
   };
 
   return (
@@ -237,142 +179,28 @@ const ActiveDaysPage: React.FC = () => {
       {/* Spiritual Journey Levels */}
       <SpiritualJourneyLevels activityData={activityData} />
 
-      {/* Calendar */}
+      {/* Practice Calendar */}
       <div className="max-w-6xl mx-auto mb-8 lg:mb-12">
-        <ModernCard className="p-6 lg:p-8 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-xl border-amber-200/50 dark:border-amber-700/50" gradient>
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Calendar className="w-6 h-6 lg:w-7 lg:h-7 text-amber-600 dark:text-amber-400" />
-                <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Activity Calendar</h2>
-              </div>
-              {yearOptions.length > 1 && (
-                <select 
-                  value={selectedYear} 
-                  onChange={(e) => {
-                    const newYear = parseInt(e.target.value);
-                    setSelectedYear(newYear);
-                    // Reset to January when changing years, or current month if current year
-                    setSelectedMonth(newYear === new Date().getFullYear() ? new Date().getMonth() : 0);
-                  }}
-                  className="bg-white dark:bg-zinc-800 border border-amber-200/50 dark:border-amber-700/50 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  {yearOptions.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            {/* Month Navigation */}
-            <div className="flex items-center justify-between mb-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigateMonth('prev')}
-                disabled={!canNavigatePrev()}
-                className="text-amber-600 dark:text-amber-400"
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Previous
-              </Button>
-              
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {calendarData.monthName}
-              </h3>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigateMonth('next')}
-                disabled={!canNavigateNext()}
-                className="text-amber-600 dark:text-amber-400"
-              >
-                Next
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Your spiritual practice journey {yearOptions.length > 1 ? `starting from ${yearOptions[0]}` : `for ${selectedYear}`}
-            </p>
-          </div>
-
-          {/* Calendar Grid */}
-          <div className="bg-white/50 dark:bg-zinc-900/50 rounded-lg p-6">
-            {/* Weekday headers */}
-            <div className="grid grid-cols-7 gap-2 mb-4">
-              {weekdays.map((day) => (
-                <div key={day} className="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* Days grid */}
-            <div className="grid grid-cols-7 gap-2">
-              {calendarData.days.map((dayData, index) => {
-                if (!dayData) {
-                  return <div key={`empty-${index}`} className="w-12 h-12"></div>;
-                }
-                
-                const spiritualLevel = getSpiritualLevel(dayData.count);
-                
-                return (
-                  <div
-                    key={dayData.date}
-                    className={`w-12 h-12 rounded-lg cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-amber-400 relative flex flex-col items-center justify-center text-sm ${
-                      getActivityLevel(dayData.count)
-                    } ${dayData.isToday ? 'ring-2 ring-amber-500 bg-amber-100 dark:bg-amber-900' : ''}`}
-                    onMouseEnter={(e) => {
-                      setHoveredDay({ date: dayData.date, count: dayData.count });
-                      handleMouseMove(e);
-                    }}
-                    onMouseMove={handleMouseMove}
-                    onMouseLeave={() => setHoveredDay(null)}
-                  >
-                    {dayData.count > 0 && spiritualLevel.icon && (
-                      <span className="text-lg filter drop-shadow-sm mb-1">
-                        {spiritualLevel.icon}
-                      </span>
-                    )}
-                    <span className={`text-xs font-medium ${
-                      dayData.isToday ? 'text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-gray-300'
-                    }`}>
-                      {dayData.day}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </ModernCard>
+        <PracticeCalendar
+          activityData={activityData}
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
+          onNavigateMonth={navigateMonth}
+          onYearChange={handleYearChange}
+          yearOptions={yearOptions}
+          hoveredDay={hoveredDay}
+          setHoveredDay={setHoveredDay}
+          onMouseMove={handleMouseMove}
+        />
       </div>
 
-      {/* Tooltip */}
+      {/* Enhanced Tooltip */}
       {hoveredDay && (
-        <div
-          className="fixed z-50 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-amber-200/50 dark:border-amber-700/50 rounded-xl px-4 py-3 text-sm pointer-events-none shadow-xl"
-          style={{
-            left: mousePosition.x + 10,
-            top: mousePosition.y - 50,
-          }}
-        >
-          <div className="text-gray-900 dark:text-white font-medium mb-1">
-            {new Date(hoveredDay.date).toLocaleDateString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            })}
-          </div>
-          <div className="text-amber-600 dark:text-amber-400">
-            {hoveredDay.count} jaaps completed
-          </div>
-          <div className="text-gray-500 dark:text-gray-400 text-xs">
-            {getSpiritualLevel(hoveredDay.count).name} level
-          </div>
-        </div>
+        <EnhancedTooltip
+          date={hoveredDay.date}
+          count={hoveredDay.count}
+          position={mousePosition}
+        />
       )}
     </div>
   );
