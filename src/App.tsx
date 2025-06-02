@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -24,8 +23,9 @@ const AuthenticatedApp: React.FC = () => {
   const { isAuthenticated, currentUser } = useBulletproofAuth();
 
   useEffect(() => {
+    // Only redirect from root path to home, don't interfere with other routes
     if (isAuthenticated && currentUser && location.pathname === '/') {
-      console.log('User authenticated, redirecting to home');
+      console.log('User authenticated, redirecting from root to home');
       navigate('/home', { replace: true });
     }
   }, [isAuthenticated, currentUser, navigate, location.pathname]);

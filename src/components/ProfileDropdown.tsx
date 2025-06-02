@@ -24,11 +24,17 @@ const ProfileDropdown: React.FC = () => {
     }
   };
 
-  const handleProfileClick = () => {
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Profile clicked, navigating to /spiritual-id');
     navigate('/spiritual-id');
   };
 
-  const handleAccountSettings = () => {
+  const handleAccountSettings = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Account settings clicked, navigating to /identity-guide');
     navigate('/identity-guide');
   };
 
@@ -76,16 +82,16 @@ const ProfileDropdown: React.FC = () => {
         <DropdownMenuSeparator className="bg-gray-200/50 dark:bg-zinc-700/50" />
         
         <DropdownMenuItem 
-          onClick={handleProfileClick}
           className="p-3 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 focus:bg-amber-50 dark:focus:bg-amber-900/20"
+          onSelect={handleProfileClick}
         >
           <User className="mr-3 h-4 w-4 text-amber-600 dark:text-amber-400" />
           <span className="text-gray-700 dark:text-gray-200">Profile</span>
         </DropdownMenuItem>
         
         <DropdownMenuItem 
-          onClick={handleAccountSettings}
           className="p-3 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 focus:bg-amber-50 dark:focus:bg-amber-900/20"
+          onSelect={handleAccountSettings}
         >
           <Shield className="mr-3 h-4 w-4 text-amber-600 dark:text-amber-400" />
           <span className="text-gray-700 dark:text-gray-200">Account Settings</span>
@@ -113,7 +119,7 @@ const ProfileDropdown: React.FC = () => {
         
         <DropdownMenuSeparator className="bg-gray-200/50 dark:bg-zinc-700/50" />
         <DropdownMenuItem 
-          onClick={handleLogout}
+          onSelect={handleLogout}
           className="p-3 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 focus:bg-red-50 dark:focus:bg-red-900/20"
         >
           <LogOut className="mr-3 h-4 w-4 text-red-600 dark:text-red-400" />
