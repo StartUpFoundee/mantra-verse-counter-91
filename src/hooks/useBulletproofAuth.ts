@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { UserAccount } from '@/utils/advancedIdUtils';
+import { UserAccount, DataPersistenceManager } from '@/utils/advancedIdUtils';
 import { DeviceAccountManager } from '@/utils/deviceAccountManager';
 import { getBulletproofDeviceId } from '@/utils/enhancedDeviceFingerprint';
 import { AccountDataManager } from '@/utils/accountDataManager';
@@ -100,31 +100,12 @@ export const useBulletproofAuth = () => {
       // Get bulletproof device ID
       const deviceId = await getBulletproofDeviceId();
       
-      // Check if there's a valid current account session
-      const currentAccount = await DeviceAccountManager.getCurrentAccount();
+      // For privacy: Clear any existing sessions on fresh app start
+      // This ensures users must always go through account selection
+      await DeviceAccountManager.clearCurrentAccount();
+      AccountDataManager.clearCurrentAccount();
       
-      if (currentAccount) {
-        // Verify the account belongs to this device
-        if (currentAccount.deviceFingerprint === deviceId) {
-          // Valid session found - restore authentication
-          setAuthState({
-            isAuthenticated: true,
-            currentUser: currentAccount,
-            isLoading: false,
-            deviceId
-          });
-          
-          console.log(`Restored authentication session for: ${currentAccount.name} (${currentAccount.id})`);
-          return;
-        } else {
-          // Account doesn't belong to this device - clear it
-          console.log('Account device mismatch - clearing session');
-          await DeviceAccountManager.clearCurrentAccount();
-        }
-      }
-      
-      // No valid session - require fresh authentication
-      console.log('No valid session found - requiring authentication');
+      console.log('App initialized - requiring account selection for privacy');
       
       setAuthState({
         isAuthenticated: false,
@@ -222,12 +203,61 @@ export const useBulletproofAuth = () => {
     }
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+    if (!authState.currentUser) {
+      throw new Error('No authenticated user');
+    }
+
+    try {
+      // Verify current password first
+      const deviceId = await getBulletproofDeviceId();
+      
+      // Create temporary hash for verification
+      const encoder = new TextEncoder();
+      const currentData = encoder.encode(currentPassword + deviceId);
+      const currentHashBuffer = await crypto.subtle.digest('SHA-256', currentData);
+      const currentHashArray = Array.from(new Uint8Array(currentHashBuffer));
+      const currentHash = currentHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      if (currentHash !== authState.currentUser.passwordHash) {
+        throw new Error('Current password is incorrect');
+      }
+
+      // Create new password hash
+      const newData = encoder.encode(newPassword + deviceId);
+      const newHashBuffer = await crypto.subtle.digest('SHA-256', newData);
+      const newHashArray = Array.from(new Uint8Array(newHashBuffer));
+      const newPasswordHash = newHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      // Update password hash
+      const updatedAccount = {
+        ...authState.currentUser,
+        passwordHash: newPasswordHash
+      };
+
+      // Store updated account
+      const manager = new DataPersistenceManager(authState.currentUser.slot);
+      await manager.storeData('account', updatedAccount);
+
+      // Update current state
+      setAuthState(prev => ({
+        ...prev,
+        currentUser: updatedAccount
+      }));
+
+      console.log('Password changed successfully');
+    } catch (error) {
+      throw error;
+    }
+  };
+
   return {
     ...authState,
     login,
     logout,
     createAccount,
     importAccount,
+    changePassword,
     refreshAuth: initializeBulletproofAuth
   };
 };
