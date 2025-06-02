@@ -48,46 +48,43 @@ function App() {
   // Show loading while checking authentication state
   if (isLoading || !hasCheckedSession) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-amber-200 dark:border-amber-800 rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-amber-600 dark:text-amber-400 text-lg font-medium">
-            Loading your spiritual journey...
+      <Router>
+        <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-amber-200 dark:border-amber-800 rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="text-amber-600 dark:text-amber-400 text-lg font-medium">
+              Loading your spiritual journey...
+            </div>
           </div>
         </div>
-      </div>
+      </Router>
     );
   }
 
-  // If user is not authenticated, show identity system or welcome screen
-  if (!isAuthenticated) {
-    if (showIdentitySystem) {
-      return (
-        <>
-          <IdentitySystem onAuthSuccess={handleAuthSuccess} />
-          <Toaster />
-        </>
-      );
-    } else {
-      return (
-        <>
-          <WelcomeScreen />
-          <Toaster />
-        </>
-      );
-    }
-  }
-
-  // User is authenticated, show the main app
   return (
     <Router>
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
-        <Routes>
-          <Route path="/" element={<HomePage onLogout={handleLogout} />} />
-          <Route path="/active-days" element={<ActiveDaysPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <Toaster />
+        {/* If user is not authenticated, show identity system or welcome screen */}
+        {!isAuthenticated ? (
+          <>
+            {showIdentitySystem ? (
+              <IdentitySystem onAuthSuccess={handleAuthSuccess} />
+            ) : (
+              <WelcomeScreen />
+            )}
+            <Toaster />
+          </>
+        ) : (
+          /* User is authenticated, show the main app with routes */
+          <>
+            <Routes>
+              <Route path="/" element={<HomePage onLogout={handleLogout} />} />
+              <Route path="/active-days" element={<ActiveDaysPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+            <Toaster />
+          </>
+        )}
       </div>
     </Router>
   );
