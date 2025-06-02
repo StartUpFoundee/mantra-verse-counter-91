@@ -215,7 +215,15 @@ export const storeData = async (storeName: string, data: any, key?: string): Pro
 
     const transaction = db.transaction([storeName], 'readwrite');
     const store = transaction.objectStore(storeName);
-    const request = key ? store.put(data, key) : store.add(data);
+    
+    // For activityData store, use put without key since it has in-line keys (date field)
+    // For other stores, use the key parameter if provided
+    let request;
+    if (storeName === STORES.activityData) {
+      request = store.put(data);
+    } else {
+      request = key ? store.put(data, key) : store.add(data);
+    }
 
     request.onsuccess = () => {
       resolve();

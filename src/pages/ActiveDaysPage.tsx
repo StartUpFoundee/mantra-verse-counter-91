@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, Flame, Target, TrendingUp } from "lucide-react";
@@ -288,9 +287,12 @@ const ActiveDaysPage: React.FC = () => {
                               <div className="w-2 h-2 bg-emerald-500 rounded-full absolute"></div>
                             )
                           )}
-                          <span className={`text-xs font-medium ${dayData.isToday ? 'text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-gray-300'} ${dayData.count > 0 ? 'mt-3' : ''}`}>
-                            {dayData.day}
-                          </span>
+                          {/* Only show date numbers for days with activity or today */}
+                          {(dayData.count > 0 || dayData.isToday) && (
+                            <span className={`text-xs font-medium ${dayData.isToday ? 'text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-gray-300'} ${dayData.count > 0 ? 'mt-3' : ''}`}>
+                              {dayData.day}
+                            </span>
+                          )}
                         </div>
                       );
                     })
