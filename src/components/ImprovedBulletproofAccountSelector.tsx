@@ -15,7 +15,7 @@ const ImprovedBulletproofAccountSelector: React.FC<ImprovedBulletproofAccountSel
   onCreateAccount,
   onSelectAccount
 }) => {
-  const { accounts, isLoading, deviceId } = useBulletproofAccountManager();
+  const { accounts, isLoading } = useBulletproofAccountManager();
 
   if (isLoading) {
     return (
@@ -69,11 +69,6 @@ const ImprovedBulletproofAccountSelector: React.FC<ImprovedBulletproofAccountSel
           <p className="text-gray-700 dark:text-gray-200 font-medium">
             Select an account to continue your spiritual journey
           </p>
-          {deviceId && (
-            <p className="text-xs text-gray-600 dark:text-gray-300 font-mono mt-2 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-              Device: {deviceId.slice(0, 16)}...
-            </p>
-          )}
         </CardHeader>
         
         <CardContent>
@@ -114,12 +109,9 @@ const ImprovedBulletproofAccountSelector: React.FC<ImprovedBulletproofAccountSel
                       <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg">
                         {getAccountIcon(slot.account)}
                       </div>
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 text-lg">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-lg">
                         {slot.account?.name}
                       </h3>
-                      <p className="text-xs text-gray-700 dark:text-gray-300 mb-1 font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                        {slot.account?.id.slice(0, 20)}...
-                      </p>
                       <div className="flex items-center justify-center gap-1 text-xs text-gray-600 dark:text-gray-300 mb-4">
                         <Clock className="w-3 h-3" />
                         <span className="font-medium">
