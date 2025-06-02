@@ -1,189 +1,274 @@
-
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Mic, Hand, Infinity, Clock, Sparkles, Calendar } from "lucide-react";
-import ThemeToggle from "@/components/ThemeToggle";
-import ProfileManager from "@/components/ProfileManager";
-import WelcomePopup from "@/components/WelcomePopup";
-import { getLifetimeCount, getTodayCount } from "@/utils/indexedDBUtils";
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Play, Pause, RotateCcw, Calendar, LogOut, User } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { useBulletproofAuth } from "@/hooks/useBulletproofAuth";
+import { updateMantraCounts, getLifetimeCount, getTodayCount } from "@/utils/indexedDBUtils";
+import { recordDailyActivity, getStreakData } from "@/utils/activityUtils";
+import { Link } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
-import ModernCard from "@/components/ModernCard";
-import StatsCard from "@/components/StatsCard";
-import ActionCard from "@/components/ActionCard";
-import { useAccountAuth } from "@/hooks/useAccountAuth";
 
-const HomePage: React.FC = () => {
-  const navigate = useNavigate();
-  const { currentUser, isAuthenticated, isLoading: authLoading } = useAccountAuth();
-  const [lifetimeCount, setLifetimeCount] = useState<number>(0);
-  const [todayCount, setTodayCount] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+interface HomePageProps {
+  onLogout: () => void;
+}
+
+const HomePage: React.FC<HomePageProps> = ({ onLogout }) => {
+  const { currentUser, logout } = useBulletproofAuth();
+  const [isChanting, setIsChanting] = useState(false);
+  const [mantraCount, setMantraCount] = useState(0);
+  const [lifetimeCount, setLifetimeCount] = useState(0);
+  const [todayCount, setTodayCount] = useState(0);
+  const [incrementBy, setIncrementBy] = useState(1);
+  const [streakData, setStreakData] = useState({ currentStreak: 0, maxStreak: 0, totalActiveDays: 0 });
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!isAuthenticated || authLoading) return;
-      
-      setIsLoading(true);
-      try {
-        const lifetime = await getLifetimeCount();
-        const today = await getTodayCount();
-        
-        setLifetimeCount(lifetime);
-        setTodayCount(today);
-      } catch (error) {
-        console.error("Error loading data:", error);
-        toast.error("There was an error loading your data. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    loadData();
-  }, [isAuthenticated, authLoading]);
+    loadCounts();
+    loadStreakData();
+  }, []);
 
-  // Don't render anything if not authenticated - App.tsx will handle showing IdentitySystem
-  if (!isAuthenticated) {
-    return null;
-  }
+  const loadCounts = async () => {
+    try {
+      const lifetime = await getLifetimeCount();
+      const today = await getTodayCount();
+      setLifetimeCount(lifetime);
+      setTodayCount(today);
+    } catch (error) {
+      console.error("Error loading counts:", error);
+    }
+  };
 
-  // Show loading while data is being fetched
-  if (isLoading || authLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
-        <div className="mb-6 text-amber-600 dark:text-amber-400 text-xl font-medium">
-          Loading your spiritual journey...
-        </div>
-        <div className="relative">
-          <div className="w-16 h-16 border-4 border-amber-200 dark:border-amber-800 rounded-full animate-spin"></div>
-          <div className="absolute top-0 left-0 w-16 h-16 border-4 border-transparent border-t-amber-500 rounded-full animate-spin"></div>
-        </div>
-      </div>
-    );
-  }
+  const loadStreakData = async () => {
+    try {
+      const data = await getStreakData();
+      setStreakData(data);
+    } catch (error) {
+      console.error("Error loading streak data:", error);
+    }
+  };
+
+  const handleChantToggle = async () => {
+    setIsChanting(!isChanting);
+    if (!isChanting) {
+      startChanting();
+    }
+  };
+
+  const startChanting = async () => {
+    setIsUpdating(true);
+    try {
+      const { lifetimeCount: newLifetime, todayCount: newToday } = await updateMantraCounts(incrementBy);
+      setLifetimeCount(newLifetime);
+      setTodayCount(newToday);
+      setMantraCount(prevCount => prevCount + incrementBy);
+      await recordDailyActivity(incrementBy);
+      await loadStreakData();
+    } catch (error) {
+      console.error("Error updating mantra count:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleResetToday = () => {
+    setMantraCount(0);
+    setTodayCount(0);
+  };
+
+  const handleIncrementChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    setIncrementBy(isNaN(value) ? 1 : value);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Logged out successfully');
+      onLogout();
+    } catch (error) {
+      toast.error('Failed to logout');
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
-      <WelcomePopup />
-      
-      {/* Header */}
-      <header className="relative px-4 lg:px-8 pt-6 lg:pt-8 pb-4 lg:pb-6">
-        <div className="flex items-center justify-between max-w-6xl mx-auto">
-          <div className="flex items-center gap-3 lg:gap-4">
-            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Sparkles className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
+    <div className="min-h-screen p-4 lg:p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header with user info and logout */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
+              {currentUser?.avatar || '🕉️'}
             </div>
             <div>
-              <h1 className="text-xl lg:text-2xl xl:text-3xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                Mantra Verse
+              <h1 className="text-2xl font-bold text-amber-800 dark:text-amber-200">
+                Welcome, {currentUser?.name || 'Spiritual Seeker'}
               </h1>
-              <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300">
-                {currentUser ? `Namaste, ${currentUser.name} Ji` : 'Spiritual Practice'}
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Continue your spiritual journey
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 lg:gap-3">
-            <ThemeToggle />
-            <ProfileManager />
-          </div>
-        </div>
-      </header>
-      
-      <main className="px-4 lg:px-8 pb-24 lg:pb-32">
-        <div className="max-w-6xl mx-auto">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
-            <StatsCard
-              title="Lifetime"
-              value={lifetimeCount}
-              subtitle="Total Jaaps"
-              icon={Infinity}
-              gradient="bg-gradient-to-br from-purple-400 to-purple-600"
-            />
-            
-            <StatsCard
-              title="Today"
-              value={todayCount}
-              subtitle="Daily Count"
-              icon={Clock}
-              gradient="bg-gradient-to-br from-emerald-400 to-emerald-600"
-            />
-            
-            {/* Desktop only - additional stats cards */}
-            <div className="hidden lg:block">
-              <StatsCard
-                title="This Week"
-                value={Math.floor(lifetimeCount * 0.1)}
-                subtitle="Weekly Progress"
-                icon={Calendar}
-                gradient="bg-gradient-to-br from-blue-400 to-blue-600"
-              />
-            </div>
-            
-            <div className="hidden lg:block">
-              <StatsCard
-                title="Average"
-                value={Math.floor(lifetimeCount / 30)}
-                subtitle="Per Day"
-                icon={Sparkles}
-                gradient="bg-gradient-to-br from-pink-400 to-pink-600"
-              />
-            </div>
-          </div>
           
-          {/* Quick Actions */}
-          <div className="space-y-4 lg:space-y-6">
-            <h2 className="text-lg lg:text-xl xl:text-2xl font-semibold text-gray-900 dark:text-white px-1">Choose Your Practice</h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-              {/* Manual Counter Card */}
-              <ActionCard
-                title="Manual Counter"
-                description="Tap screen, earphone or volume buttons"
-                hindiDescription="हाथ से दबाएं या ईयरफोन/वॉल्यूम बटन का उपयोग करें"
-                icon={Hand}
-                gradient="bg-gradient-to-br from-amber-400 to-orange-500"
-                onClick={() => navigate('/manual')}
-              />
-              
-              {/* Audio Counter Card */}
-              <ActionCard
-                title="Audio Counter"
-                description="Chant with 1 second pauses for auto-count"
-                hindiDescription="मंत्र जाप करें, 1 सेकंड रुकें, काउंटर बढ़ेगा"
-                icon={Mic}
-                gradient="bg-gradient-to-br from-blue-400 to-purple-500"
-                onClick={() => navigate('/audio')}
-              />
-            </div>
-          </div>
-
-          {/* Active Days Card */}
-          <div className="mt-6 lg:mt-8">
-            <ModernCard 
-              onClick={() => navigate('/active-days')}
-              className="p-6 lg:p-8 bg-gradient-to-r from-emerald-500 to-teal-600 text-white cursor-pointer hover:scale-[1.02] transition-all duration-300"
-              glowEffect
+          <div className="flex items-center gap-2">
+            <Link to="/active-days">
+              <Button variant="outline" size="sm">
+                <Calendar className="w-4 h-4 mr-2" />
+                Activity
+              </Button>
+            </Link>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleLogout}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
             >
-              <div className="flex items-center gap-4 lg:gap-6">
-                <div className="w-12 h-12 lg:w-16 lg:h-16 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                  <Calendar className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg lg:text-xl xl:text-2xl font-semibold mb-1 lg:mb-2">Track Your Journey</h3>
-                  <p className="text-sm lg:text-base text-emerald-100">View your practice streaks and active days</p>
-                </div>
-                <div className="text-2xl lg:text-3xl">🔥</div>
-              </div>
-            </ModernCard>
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
-      </main>
-      
-      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-t border-amber-200/50 dark:border-zinc-700/50 py-4 lg:py-6">
-        <p className="text-center text-gray-500 dark:text-gray-400 text-sm lg:text-base">
-          Created with 🧡 for spiritual practice
-        </p>
-      </footer>
+
+        {/* Account Info Card */}
+        <Card className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200/50 dark:border-blue-700/50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <div>
+                  <p className="font-semibold text-blue-800 dark:text-blue-200">
+                    Account Slot {currentUser?.slot}
+                  </p>
+                  <p className="text-sm text-blue-600 dark:text-blue-400 font-mono">
+                    ID: {currentUser?.id.slice(0, 20)}...
+                  </p>
+                </div>
+              </div>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                Family Account {currentUser?.slot}/3
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Chanting Section */}
+          <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-zinc-800 dark:to-zinc-700 border-amber-200/50 dark:border-zinc-700/50">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold text-amber-700 dark:text-amber-300 mb-4">
+                Start Chanting Now
+              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Today's Count:
+                  </p>
+                  <p className="text-2xl font-semibold text-orange-700 dark:text-orange-300">
+                    {todayCount}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Lifetime Count:
+                  </p>
+                  <p className="text-2xl font-semibold text-orange-700 dark:text-orange-300">
+                    {lifetimeCount}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between mb-4">
+                <Input
+                  type="number"
+                  placeholder="Increment By"
+                  value={incrementBy}
+                  onChange={handleIncrementChange}
+                  className="w-24 text-center bg-white/80 dark:bg-zinc-900/80 border-gray-300/50 dark:border-zinc-600/50"
+                />
+                <Button
+                  className="w-32 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                  onClick={handleChantToggle}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? (
+                    <RotateCcw className="mr-2 h-4 w-4 animate-spin" />
+                  ) : isChanting ? (
+                    <Pause className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Play className="mr-2 h-4 w-4" />
+                  )}
+                  {isUpdating ? "Updating..." : isChanting ? "Pause" : "Chant"}
+                </Button>
+              </div>
+
+              <Button
+                variant="secondary"
+                onClick={handleResetToday}
+                className="w-full text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-zinc-800/50"
+              >
+                Reset Today's Count
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Streak and Stats Section */}
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-zinc-800 dark:to-zinc-700 border-blue-200/50 dark:border-zinc-700/50">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold text-blue-700 dark:text-blue-300 mb-4">
+                Your Spiritual Stats
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Current Streak:
+                  </p>
+                  <p className="text-2xl font-semibold text-indigo-700 dark:text-indigo-300">
+                    {streakData.currentStreak} days
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Max Streak:
+                  </p>
+                  <p className="text-2xl font-semibold text-indigo-700 dark:text-indigo-300">
+                    {streakData.maxStreak} days
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Total Active Days:
+                  </p>
+                  <p className="text-2xl font-semibold text-indigo-700 dark:text-indigo-300">
+                    {streakData.totalActiveDays} days
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Separator */}
+        <Separator className="my-6" />
+
+        {/* Tips and Motivation */}
+        <Card className="bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm border-gray-200/50 dark:border-zinc-700/50">
+          <CardContent className="p-6">
+            <h2 className="text-xl font-bold text-green-700 dark:text-green-300 mb-4">
+              Daily Motivation
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              "The mind is everything. What you think you become." - Buddha
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              Take a moment to reflect on this quote as you continue your
+              chanting practice.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
