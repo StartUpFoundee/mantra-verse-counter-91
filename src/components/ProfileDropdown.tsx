@@ -4,14 +4,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { User, LogOut, Settings, Key, Shield, Bell } from 'lucide-react';
-import { useBulletproofAuth } from '@/hooks/useBulletproofAuth';
+import { useAccountAuth } from '@/hooks/useAccountAuth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import ChangePasswordDialog from './ChangePasswordDialog';
 import AlarmSettingsDialog from './AlarmSettingsDialog';
 
 const ProfileDropdown: React.FC = () => {
-  const { currentUser, logout } = useBulletproofAuth();
+  const { currentUser, logout } = useAccountAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
