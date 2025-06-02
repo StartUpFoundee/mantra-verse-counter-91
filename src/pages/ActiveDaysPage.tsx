@@ -61,7 +61,7 @@ const ActiveDaysPage: React.FC = () => {
     if (activityDates.length === 0) return new Date().getFullYear();
     
     const earliestDate = activityDates.sort()[0];
-    return new Date(earliestDate).getFullYear();
+    return new Date(earliestDate + 'T00:00:00').getFullYear(); // Add time to avoid timezone issues
   };
 
   // Generate year options only if we have past year data
@@ -111,10 +111,14 @@ const ActiveDaysPage: React.FC = () => {
       // Add all days of the month
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(year, month, day);
-        const dateStr = date.toISOString().split('T')[0];
+        // Create date string in local timezone to match activity data format
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const count = activityData[dateStr] || 0;
-        const today = new Date().toISOString().split('T')[0];
-        const isToday = dateStr === today;
+        
+        // Check if today using local dates
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const isToday = dateStr === todayStr;
         
         days.push({
           date: dateStr,

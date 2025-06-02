@@ -15,10 +15,22 @@ export interface StreakData {
 }
 
 /**
+ * Get today's date string in local timezone
+ */
+const getTodayDateString = (): string => {
+  const today = new Date();
+  // Use local timezone to avoid UTC conversion issues
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+/**
  * Record daily activity when user completes jaaps
  */
 export const recordDailyActivity = async (count: number = 1): Promise<void> => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDateString();
   
   try {
     // Get existing activity for today
@@ -54,12 +66,11 @@ export const getActivityData = async (): Promise<{[date: string]: number}> => {
     
     // Always get today's count from the main counter system and sync it
     const todayCount = await getTodayCount();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDateString();
     
     if (todayCount > 0) {
       activityMap[today] = todayCount;
       // Sync today's count to activity data
-      await recordDailyActivity(0); // This will update with current count
       const activityData: DailyActivity = {
         date: today,
         count: todayCount,
@@ -68,6 +79,7 @@ export const getActivityData = async (): Promise<{[date: string]: number}> => {
       await storeData(STORES.activityData, activityData, today);
     }
     
+    console.log('Activity data loaded:', activityMap);
     return activityMap;
   } catch (error) {
     console.error("Failed to get activity data:", error);
@@ -91,7 +103,7 @@ export const getStreakData = async (): Promise<StreakData> => {
     const totalActiveDays = activeDates.length;
     
     // Calculate current streak (working backwards from today)
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDateString();
     let currentStreak = 0;
     let checkDate = new Date();
     
@@ -103,7 +115,11 @@ export const getStreakData = async (): Promise<StreakData> => {
     
     // Count consecutive days backwards
     while (true) {
-      const dateStr = checkDate.toISOString().split('T')[0];
+      const year = checkDate.getFullYear();
+      const month = String(checkDate.getMonth() + 1).padStart(2, '0');
+      const day = String(checkDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
       if (activityData[dateStr] && activityData[dateStr] > 0) {
         currentStreak++;
         checkDate.setDate(checkDate.getDate() - 1);
@@ -118,7 +134,7 @@ export const getStreakData = async (): Promise<StreakData> => {
     let previousDate: Date | null = null;
     
     activeDates.forEach(dateStr => {
-      const currentDate = new Date(dateStr);
+      const currentDate = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
       
       if (previousDate) {
         const dayDiff = Math.floor((currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24));
