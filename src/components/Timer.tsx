@@ -18,7 +18,7 @@ const Timer: React.FC<TimerProps> = ({
   isActive = true 
 }) => {
   const [timeLeft, setTimeLeft] = useState(initialMinutes * 60); // Convert to seconds
-  const [isRunning, setIsRunning] = useState(isActive);
+  const [isRunning, setIsRunning] = useState(false); // Changed: Don't auto-start
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const alarmAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -86,6 +86,12 @@ const Timer: React.FC<TimerProps> = ({
   const toggleTimer = () => {
     setIsRunning(!isRunning);
     stopAlarm(); // Stop alarm if running when user interacts
+    
+    if (!isRunning) {
+      toast.success("⏰ Timer started!", { duration: 1500 });
+    } else {
+      toast.info("⏸️ Timer paused", { duration: 1500 });
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -97,43 +103,85 @@ const Timer: React.FC<TimerProps> = ({
   const progress = ((initialMinutes * 60 - timeLeft) / (initialMinutes * 60)) * 100;
 
   return (
-    <div className="flex flex-col items-center gap-4 p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg">
-      <div className="flex items-center gap-2">
-        <Clock className="w-5 h-5 text-amber-400" />
-        <span className="text-amber-400 font-medium">Meditation Timer</span>
+    <div className="flex flex-col items-center gap-4 p-6 bg-gradient-to-br from-white/80 to-amber-50/80 dark:from-zinc-800/80 dark:to-zinc-900/80 backdrop-blur-sm border border-amber-200 dark:border-zinc-700 rounded-xl shadow-lg">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center">
+          <Clock className="w-4 h-4 text-white" />
+        </div>
+        <span className="text-amber-600 dark:text-amber-400 font-semibold text-lg">Meditation Timer</span>
       </div>
       
-      <div className="relative w-24 h-24">
-        <div className="absolute inset-0 w-24 h-24 rounded-full border-4 border-zinc-700"></div>
-        <div 
-          className="absolute inset-0 w-24 h-24 rounded-full border-4 border-amber-500 transform -rotate-90 transition-all duration-1000"
-          style={{
-            clipPath: `polygon(50% 50%, 50% 0%, ${progress > 50 ? '100%' : '50%'} 0%, ${progress > 50 ? '100%' : 50 + (progress / 100) * 50 + '%'} ${progress > 50 ? (progress - 50) / 50 * 100 + '%' : '50%'}, ${progress > 50 ? '50%' : '50%'} ${progress > 50 ? '100%' : '50%'}, 50% 50%)`
-          }}
-        ></div>
+      <div className="relative w-32 h-32">
+        {/* Background circle */}
+        <div className="absolute inset-0 w-32 h-32 rounded-full border-4 border-amber-200 dark:border-zinc-600"></div>
+        {/* Progress circle */}
+        <svg className="absolute inset-0 w-32 h-32 transform -rotate-90" viewBox="0 0 128 128">
+          <circle
+            cx="64"
+            cy="64"
+            r="60"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="4"
+            strokeLinecap="round"
+            className="text-amber-500 transition-all duration-1000"
+            strokeDasharray={`${progress * 3.77} 377`}
+          />
+        </svg>
+        {/* Time display */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-white font-mono text-sm">{formatTime(timeLeft)}</span>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 font-mono">
+              {formatTime(timeLeft)}
+            </div>
+            <div className="text-xs text-amber-500 dark:text-amber-500 mt-1">
+              {isRunning ? "Running" : "Ready"}
+            </div>
+          </div>
         </div>
       </div>
       
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <Button
           onClick={toggleTimer}
           size="sm"
-          variant="outline"
-          className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 border-zinc-700"
+          className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all ${
+            isRunning 
+              ? 'bg-red-500 hover:bg-red-600 text-white' 
+              : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg'
+          }`}
         >
-          {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+          {isRunning ? (
+            <>
+              <Pause className="w-4 h-4" />
+              Pause
+            </>
+          ) : (
+            <>
+              <Play className="w-4 h-4" />
+              Start
+            </>
+          )}
         </Button>
         
         <Button
           onClick={onReset}
           size="sm"
           variant="outline"
-          className="bg-zinc-800 hover:bg-zinc-700 text-gray-400 border-zinc-700"
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 dark:bg-zinc-800/60 hover:bg-white dark:hover:bg-zinc-700 border-amber-300 dark:border-amber-600 text-amber-600 dark:text-amber-400"
         >
           <Square className="w-4 h-4" />
+          Stop
         </Button>
+      </div>
+      
+      <div className="text-center">
+        <p className="text-sm text-amber-600 dark:text-amber-400">
+          {initialMinutes} minute meditation session
+        </p>
+        <p className="text-xs text-amber-500 dark:text-amber-500 mt-1">
+          Click start when ready to begin
+        </p>
       </div>
     </div>
   );
