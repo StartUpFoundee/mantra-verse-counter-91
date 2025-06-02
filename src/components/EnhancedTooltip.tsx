@@ -43,11 +43,6 @@ const EnhancedTooltip: React.FC<EnhancedTooltipProps> = ({ date, jaaps, mousePos
               <span>{level.icon}</span>
               <span>{level.name} level</span>
             </div>
-            {level.motivationalMessage && (
-              <div className="text-amber-300 text-xs mt-1 italic">
-                {level.motivationalMessage}
-              </div>
-            )}
           </>
         ) : (
           <div>No practice this day</div>
