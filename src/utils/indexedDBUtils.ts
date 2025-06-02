@@ -15,7 +15,7 @@ export const initializeDatabase = (): Promise<void> => {
       return;
     }
 
-    const request = indexedDB.open('MantraCounterDB', 2);
+    const request = indexedDB.open('MantraCounterDB', 3);
 
     request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
       const db = (event.target as IDBRequest).result as IDBDatabase;
@@ -30,11 +30,18 @@ export const initializeDatabase = (): Promise<void> => {
         const countsStore = (event.target as IDBRequest).transaction.objectStore('counts');
         countsStore.createIndex('date', 'date', { unique: false });
       }
+
+      if (event.oldVersion < 3) {
+        // Version 3, add activityData store
+        if (!db.objectStoreNames.contains('activityData')) {
+          db.createObjectStore('activityData', { keyPath: 'date' });
+        }
+      }
     };
 
     request.onsuccess = (event: Event) => {
       db = (event.target as IDBRequest).result as IDBDatabase;
-      console.log('Database initialized');
+      console.log('Database initialized with version 3');
       resolve();
     };
 
@@ -139,6 +146,20 @@ export const updateMantraCounts = async (incrementBy: number = 1): Promise<{ lif
     dailyData[today] = newToday;
     await AccountDataManager.storeAccountData('dailyProgress', dailyData);
     
+    // Record activity in activityData store
+    const todayISO = new Date().toISOString().split('T')[0];
+    try {
+      const activityData = {
+        date: todayISO,
+        count: newToday,
+        timestamp: Date.now()
+      };
+      await storeData(STORES.activityData, activityData);
+      console.log(`Recorded activity for ${todayISO}: ${newToday} jaaps`);
+    } catch (activityError) {
+      console.error('Failed to record activity data:', activityError);
+    }
+    
     console.log(`Updated mantra counts: lifetime=${newLifetime}, today=${newToday}`);
     return { lifetimeCount: newLifetime, todayCount: newToday };
   } catch (error) {
@@ -208,7 +229,7 @@ export const storeData = async (storeName: string, data: any, key?: string): Pro
 
     const transaction = db.transaction([storeName], 'readwrite');
     const store = transaction.objectStore(storeName);
-    const request = key ? store.put(data, key) : store.add(data);
+    const request = key ? store.put(data, key) : store.put(data);
 
     request.onsuccess = () => {
       resolve();
