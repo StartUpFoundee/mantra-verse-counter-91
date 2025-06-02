@@ -76,7 +76,7 @@ const ProfileDropdown: React.FC = () => {
         <DropdownMenuSeparator className="bg-gray-200/50 dark:bg-zinc-700/50" />
         
         <DropdownMenuItem 
-          onSelect={handleProfileClick}
+          onClick={handleProfileClick}
           className="p-3 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 focus:bg-amber-50 dark:focus:bg-amber-900/20"
         >
           <User className="mr-3 h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -84,7 +84,7 @@ const ProfileDropdown: React.FC = () => {
         </DropdownMenuItem>
         
         <DropdownMenuItem 
-          onSelect={handleAccountSettings}
+          onClick={handleAccountSettings}
           className="p-3 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 focus:bg-amber-50 dark:focus:bg-amber-900/20"
         >
           <Shield className="mr-3 h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -113,7 +113,7 @@ const ProfileDropdown: React.FC = () => {
         
         <DropdownMenuSeparator className="bg-gray-200/50 dark:bg-zinc-700/50" />
         <DropdownMenuItem 
-          onSelect={handleLogout}
+          onClick={handleLogout}
           className="p-3 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 focus:bg-red-50 dark:focus:bg-red-900/20"
         >
           <LogOut className="mr-3 h-4 w-4 text-red-600 dark:text-red-400" />
