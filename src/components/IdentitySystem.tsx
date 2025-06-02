@@ -34,7 +34,6 @@ const IdentitySystem: React.FC<IdentitySystemProps> = ({ onAuthSuccess }) => {
   const handleAccountCreated = (accountCreated: boolean) => {
     if (accountCreated) {
       // Account was created and user is automatically logged in
-      // No need to redirect to login, the user is already authenticated
       onAuthSuccess();
     } else {
       // User cancelled or error occurred, go back to selector
@@ -44,7 +43,7 @@ const IdentitySystem: React.FC<IdentitySystemProps> = ({ onAuthSuccess }) => {
   };
 
   const handleLoginSuccess = () => {
-    // User successfully logged in, trigger auth success
+    // User successfully logged in, trigger auth success to redirect to home
     onAuthSuccess();
   };
 

@@ -100,14 +100,31 @@ export const useBulletproofAuth = () => {
       // Get bulletproof device ID
       const deviceId = await getBulletproofDeviceId();
       
-      // SECURITY FIX: Clear any existing current account session on app initialization
-      // This forces users to go through account selection and password entry every time
-      await DeviceAccountManager.clearCurrentAccount();
+      // Check if there's a valid current account session
+      const currentAccount = await DeviceAccountManager.getCurrentAccount();
       
-      // Clear account context to ensure no data access without proper authentication
-      AccountDataManager.clearCurrentAccount();
+      if (currentAccount) {
+        // Verify the account belongs to this device
+        if (currentAccount.deviceFingerprint === deviceId) {
+          // Valid session found - restore authentication
+          setAuthState({
+            isAuthenticated: true,
+            currentUser: currentAccount,
+            isLoading: false,
+            deviceId
+          });
+          
+          console.log(`Restored authentication session for: ${currentAccount.name} (${currentAccount.id})`);
+          return;
+        } else {
+          // Account doesn't belong to this device - clear it
+          console.log('Account device mismatch - clearing session');
+          await DeviceAccountManager.clearCurrentAccount();
+        }
+      }
       
-      console.log('App initialized - requiring fresh authentication for security');
+      // No valid session - require fresh authentication
+      console.log('No valid session found - requiring authentication');
       
       setAuthState({
         isAuthenticated: false,
