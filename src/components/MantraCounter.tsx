@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { SpeechDetection } from "@/utils/speechDetection";
 import { AudioFeedback } from "@/utils/audioFeedback";
 import TargetSelector from "@/components/TargetSelector";
 import CompletionAlert from "@/components/CompletionAlert";
+import Timer from "@/components/Timer";
 import { Mic, MicOff, Volume, Volume2, VolumeX } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { getLifetimeCount, getTodayCount, updateMantraCounts } from "@/utils/indexedDBUtils";
@@ -22,6 +22,8 @@ const MantraCounter: React.FC = () => {
   const [todayCount, setTodayCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [audioFeedbackEnabled, setAudioFeedbackEnabled] = useState<boolean>(true);
+  const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
+  const [showTimerComplete, setShowTimerComplete] = useState<boolean>(false);
   const speechDetection = useRef<SpeechDetection | null>(null);
   const audioFeedback = useRef<AudioFeedback | null>(null);
   const lastCountTime = useRef<number>(0);
@@ -74,10 +76,12 @@ const MantraCounter: React.FC = () => {
     setShowCompletionAlert(true);
   };
 
-  const handleSelectTarget = (target: number) => {
+  const handleSelectTarget = (target: number, timer?: number) => {
     setTargetCount(target);
+    setTimerMinutes(timer || null);
     setCurrentCount(0);
     setShowCompletionAlert(false);
+    setShowTimerComplete(false);
   };
 
   const requestMicPermission = async () => {
@@ -261,6 +265,17 @@ const MantraCounter: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center w-full max-w-md mx-auto px-4">
+      {timerMinutes && (
+        <div className="mb-6 w-full">
+          <Timer 
+            initialMinutes={timerMinutes}
+            onTimerComplete={handleTimerComplete}
+            onReset={resetTimer}
+            isActive={!showTimerComplete}
+          />
+        </div>
+      )}
+
       <div className="mb-4 text-center w-full">
         <div className="text-amber-400 text-lg">{currentCount} / {targetCount}</div>
         <div className="text-sm text-gray-400">{Math.round(progressPercentage)}% complete</div>
@@ -383,6 +398,21 @@ const MantraCounter: React.FC = () => {
         targetCount={targetCount} 
         onClose={() => setShowCompletionAlert(false)} 
       />
+
+      {showTimerComplete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-6 text-center max-w-sm">
+            <h3 className="text-2xl text-orange-600 mb-4">🔔 Timer Complete!</h3>
+            <p className="text-gray-700 mb-4">Your meditation session time is up.</p>
+            <Button 
+              onClick={() => setShowTimerComplete(false)}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              Continue
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

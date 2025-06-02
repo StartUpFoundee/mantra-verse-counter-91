@@ -1,14 +1,17 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import TimerSelector from "./TimerSelector";
 
 interface TargetSelectorProps {
-  onSelectTarget: (target: number) => void;
+  onSelectTarget: (target: number, timerMinutes?: number) => void;
 }
 
 const TargetSelector: React.FC<TargetSelectorProps> = ({ onSelectTarget }) => {
-  const [customTarget, setCustomTarget] = React.useState<string>("");
+  const [customTarget, setCustomTarget] = useState<string>("");
+  const [showTimerSelector, setShowTimerSelector] = useState<boolean>(false);
+  const [selectedTarget, setSelectedTarget] = useState<number | null>(null);
 
   const handleCustomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -21,9 +24,36 @@ const TargetSelector: React.FC<TargetSelectorProps> = ({ onSelectTarget }) => {
   const handleCustomSubmit = () => {
     const target = parseInt(customTarget, 10);
     if (!isNaN(target) && target > 0) {
-      onSelectTarget(target);
+      setSelectedTarget(target);
+      setShowTimerSelector(true);
     }
   };
+
+  const handlePresetTarget = (target: number) => {
+    setSelectedTarget(target);
+    setShowTimerSelector(true);
+  };
+
+  const handleTimerSelect = (minutes: number) => {
+    if (selectedTarget) {
+      onSelectTarget(selectedTarget, minutes);
+    }
+  };
+
+  const handleSkipTimer = () => {
+    if (selectedTarget) {
+      onSelectTarget(selectedTarget);
+    }
+  };
+
+  if (showTimerSelector && selectedTarget) {
+    return (
+      <TimerSelector 
+        onSelectTimer={handleTimerSelect}
+        onCancel={handleSkipTimer}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col items-center gap-6 py-6 w-full max-w-md">
@@ -32,14 +62,14 @@ const TargetSelector: React.FC<TargetSelectorProps> = ({ onSelectTarget }) => {
         <Button 
           className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700 h-12 text-lg font-medium"
           variant="outline" 
-          onClick={() => onSelectTarget(108)}
+          onClick={() => handlePresetTarget(108)}
         >
           108
         </Button>
         <Button 
           className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700 h-12 text-lg font-medium"
           variant="outline" 
-          onClick={() => onSelectTarget(1008)}
+          onClick={() => handlePresetTarget(1008)}
         >
           1008
         </Button>
