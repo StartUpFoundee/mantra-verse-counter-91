@@ -33,6 +33,10 @@ export const useBulletproofAccountManager = () => {
     }
   };
 
+  const hasMaxAccounts = () => {
+    return accounts.filter(slot => !slot.isEmpty).length >= 3;
+  };
+
   useEffect(() => {
     loadAccounts();
   }, []);
@@ -41,6 +45,7 @@ export const useBulletproofAccountManager = () => {
     accounts,
     isLoading,
     deviceId,
-    refreshAccounts: loadAccounts
+    refreshAccounts: loadAccounts,
+    hasMaxAccounts
   };
 };
