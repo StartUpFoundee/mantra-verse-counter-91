@@ -3,12 +3,11 @@ import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, LogOut, Settings, Key, Shield, Bell } from 'lucide-react';
+import { User, LogOut, Settings, Key, Shield } from 'lucide-react';
 import { useBulletproofAuth } from '@/hooks/useBulletproofAuth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import ChangePasswordDialog from './ChangePasswordDialog';
-import AlarmSettingsDialog from './AlarmSettingsDialog';
 
 const ProfileDropdown: React.FC = () => {
   const { currentUser, logout } = useBulletproofAuth();
@@ -96,16 +95,6 @@ const ProfileDropdown: React.FC = () => {
           <Shield className="mr-3 h-4 w-4 text-amber-600 dark:text-amber-400" />
           <span className="text-gray-700 dark:text-gray-200">Account Settings</span>
         </DropdownMenuItem>
-        
-        <AlarmSettingsDialog>
-          <DropdownMenuItem 
-            onSelect={(e) => e.preventDefault()}
-            className="p-3 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 focus:bg-amber-50 dark:focus:bg-amber-900/20"
-          >
-            <Bell className="mr-3 h-4 w-4 text-amber-600 dark:text-amber-400" />
-            <span className="text-gray-700 dark:text-gray-200">Alarm Settings</span>
-          </DropdownMenuItem>
-        </AlarmSettingsDialog>
         
         <ChangePasswordDialog>
           <DropdownMenuItem 
