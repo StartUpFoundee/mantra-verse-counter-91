@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Flame, Target, TrendingUp } from "lucide-react";
+import { ArrowLeft, Flame, Target, TrendingUp, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getActivityData, getStreakData } from "@/utils/activityUtils";
+import { getActivityData, getStreakData, resetAllData } from "@/utils/activityUtils";
 import ModernCard from "@/components/ModernCard";
 import SpiritualJourneyLevels from "@/components/SpiritualJourneyLevels";
-import PracticeCalendar from "@/components/PracticeCalendar";
+import LeetCodeStyleCalendar from "@/components/LeetCodeStyleCalendar";
 import EnhancedTooltip from "@/components/EnhancedTooltip";
 
 interface ActivityData {
@@ -30,7 +30,7 @@ const ActiveDaysPage: React.FC = () => {
   const [hoveredDay, setHoveredDay] = useState<{date: string, count: number} | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -84,36 +84,24 @@ const ActiveDaysPage: React.FC = () => {
     setMousePosition({ x: e.clientX, y: e.clientY });
   };
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    const currentDate = new Date();
-    const maxDate = new Date(currentDate.getFullYear(), currentDate.getMonth());
-    
-    if (direction === 'prev') {
-      if (selectedMonth === 0) {
-        if (selectedYear > getJourneyStartYear()) {
-          setSelectedYear(selectedYear - 1);
-          setSelectedMonth(11);
-        }
-      } else {
-        setSelectedMonth(selectedMonth - 1);
-      }
-    } else {
-      const nextMonth = new Date(selectedYear, selectedMonth + 1);
-      if (nextMonth <= maxDate) {
-        if (selectedMonth === 11) {
-          setSelectedYear(selectedYear + 1);
-          setSelectedMonth(0);
-        } else {
-          setSelectedMonth(selectedMonth + 1);
-        }
-      }
-    }
-  };
-
   const handleYearChange = (newYear: number) => {
     setSelectedYear(newYear);
-    // Reset to January when changing years, or current month if current year
-    setSelectedMonth(newYear === new Date().getFullYear() ? new Date().getMonth() : 0);
+  };
+
+  const handleResetData = async () => {
+    if (window.confirm('This will permanently delete all your practice data. Are you sure?')) {
+      setIsResetting(true);
+      try {
+        await resetAllData();
+        setActivityData({});
+        setStreakData({ currentStreak: 0, maxStreak: 0, totalActiveDays: 0 });
+        console.log('All data has been reset');
+      } catch (error) {
+        console.error('Failed to reset data:', error);
+      } finally {
+        setIsResetting(false);
+      }
+    }
   };
 
   return (
@@ -131,7 +119,15 @@ const ActiveDaysPage: React.FC = () => {
         <h1 className="text-2xl lg:text-3xl xl:text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent text-center">
           Active Days
         </h1>
-        <div className="w-28"></div>
+        <Button
+          onClick={handleResetData}
+          disabled={isResetting}
+          variant="ghost"
+          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-100/50 dark:hover:bg-red-900/20 backdrop-blur-sm"
+        >
+          <RotateCcw className="w-5 h-5 mr-2" />
+          {isResetting ? 'Resetting...' : 'Reset Data'}
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -179,13 +175,11 @@ const ActiveDaysPage: React.FC = () => {
       {/* Spiritual Journey Levels */}
       <SpiritualJourneyLevels activityData={activityData} />
 
-      {/* Practice Calendar */}
+      {/* LeetCode-Style Practice Calendar */}
       <div className="max-w-6xl mx-auto mb-8 lg:mb-12">
-        <PracticeCalendar
+        <LeetCodeStyleCalendar
           activityData={activityData}
           selectedYear={selectedYear}
-          selectedMonth={selectedMonth}
-          onNavigateMonth={navigateMonth}
           onYearChange={handleYearChange}
           yearOptions={yearOptions}
           hoveredDay={hoveredDay}

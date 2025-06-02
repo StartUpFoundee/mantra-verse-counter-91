@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { getSpiritualLevel } from './SpiritualJourneyLevels';
+import { getCategoryByJaaps } from '@/utils/activityUtils';
 
 interface EnhancedTooltipProps {
   date: string;
@@ -9,7 +9,7 @@ interface EnhancedTooltipProps {
 }
 
 const EnhancedTooltip: React.FC<EnhancedTooltipProps> = ({ date, count, position }) => {
-  const spiritualLevel = getSpiritualLevel(count);
+  const category = getCategoryByJaaps(count);
   const dateObj = new Date(date);
   const formattedDate = dateObj.toLocaleDateString('en-US', {
     weekday: 'short',
@@ -18,7 +18,7 @@ const EnhancedTooltip: React.FC<EnhancedTooltipProps> = ({ date, count, position
     year: 'numeric'
   });
 
-  const getMotivationalMessage = (level: string, count: number) => {
+  const getMotivationalMessage = (categoryName: string, count: number) => {
     if (count === 0) return "A day of rest in your spiritual journey";
     
     const messages = {
@@ -30,16 +30,19 @@ const EnhancedTooltip: React.FC<EnhancedTooltipProps> = ({ date, count, position
       Jivanmukta: "Liberated soul! Your practice inspires others 🪷"
     };
     
-    return messages[level as keyof typeof messages] || "Keep practicing!";
+    return messages[categoryName as keyof typeof messages] || "Keep practicing!";
+  };
+
+  // Calculate position to avoid going off-screen
+  const tooltipStyle = {
+    left: Math.min(position.x + 10, window.innerWidth - 320),
+    top: Math.max(position.y - 140, 20),
   };
 
   return (
     <div
       className="fixed z-50 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-amber-200/50 dark:border-amber-700/50 rounded-xl px-4 py-3 text-sm pointer-events-none shadow-xl max-w-xs"
-      style={{
-        left: position.x + 10,
-        top: position.y - 120,
-      }}
+      style={tooltipStyle}
     >
       {/* Date */}
       <div className="text-gray-900 dark:text-white font-semibold mb-2">
@@ -48,22 +51,22 @@ const EnhancedTooltip: React.FC<EnhancedTooltipProps> = ({ date, count, position
       
       {/* Practice summary */}
       <div className="flex items-center gap-2 mb-2">
-        {spiritualLevel.icon && (
-          <span className="text-lg">{spiritualLevel.icon}</span>
+        {category.icon && (
+          <span className="text-lg">{category.icon}</span>
         )}
         <div>
           <div className="text-amber-600 dark:text-amber-400 font-medium">
             {count} jaaps completed
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            {spiritualLevel.name} level ({spiritualLevel.range})
+            {category.name} level ({category.range})
           </div>
         </div>
       </div>
       
       {/* Motivational message */}
       <div className="text-xs text-gray-600 dark:text-gray-300 italic border-t border-gray-200 dark:border-gray-700 pt-2">
-        {getMotivationalMessage(spiritualLevel.name, count)}
+        {getMotivationalMessage(category.name, count)}
       </div>
       
       {/* Achievement indicator */}
