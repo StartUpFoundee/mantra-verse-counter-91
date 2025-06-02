@@ -1,9 +1,7 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
 import * as Tone from 'tone';
-import { Volume2, VolumeX, Smartphone, Settings, Play, Pause, X } from 'lucide-react';
+import { Play, Pause, Bell } from 'lucide-react';
 
 interface AlarmSystemProps {
   isActive: boolean;
@@ -29,15 +27,6 @@ const ALARM_SONGS = [
   { id: 'aarti-celebration', name: 'Aarti Celebration', description: 'Ceremonial aarti music' }
 ];
 
-const DURATION_OPTIONS = [
-  { value: 10, label: '10 seconds' },
-  { value: 20, label: '20 seconds' },
-  { value: 30, label: '30 seconds' },
-  { value: 45, label: '45 seconds' },
-  { value: 60, label: '60 seconds' },
-  { value: -1, label: 'Until stopped' }
-];
-
 const AlarmSystem: React.FC<AlarmSystemProps> = ({
   isActive,
   onStop,
@@ -51,7 +40,6 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
     vibrationEnabled: true,
     audioEnabled: true
   });
-  const [showSettings, setShowSettings] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   
   const synthsRef = useRef<any[]>([]);
@@ -73,11 +61,6 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
     }
   }, []);
 
-  // Save settings to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('alarmSettings', JSON.stringify(settings));
-  }, [settings]);
-
   useEffect(() => {
     if (isActive) {
       startAlarm();
@@ -95,7 +78,6 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
 
   const startAlarm = async () => {
     try {
-      // Start Tone.js context
       if (Tone.context.state !== 'running') {
         await Tone.start();
       }
@@ -110,7 +92,6 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
         startVibration();
       }
 
-      // Set duration timeout if not infinite
       if (settings.duration > 0) {
         durationTimeoutRef.current = setTimeout(() => {
           stopAlarm();
@@ -122,11 +103,9 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
   };
 
   const startSelectedAlarmSound = () => {
-    // Clear any existing synths
     synthsRef.current.forEach(synth => synth.dispose());
     synthsRef.current = [];
 
-    // Create different sound patterns based on selected song
     switch (settings.selectedSong) {
       case 'temple-bells':
         createTempleBellsSound();
@@ -316,13 +295,11 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
   const stopAlarm = () => {
     setIsPlaying(false);
     
-    // Stop all audio
     synthsRef.current.forEach(synth => {
       if (synth.dispose) synth.dispose();
     });
     synthsRef.current = [];
 
-    // Stop vibration
     if (vibrationIntervalRef.current) {
       clearInterval(vibrationIntervalRef.current);
       vibrationIntervalRef.current = null;
@@ -331,7 +308,6 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
       navigator.vibrate(0);
     }
 
-    // Clear duration timeout
     if (durationTimeoutRef.current) {
       clearTimeout(durationTimeoutRef.current);
       durationTimeoutRef.current = null;
@@ -352,169 +328,63 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
     }, 60000);
   };
 
-  const updateSettings = (newSettings: Partial<AlarmSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
-  };
-
   if (!isActive) return null;
 
+  const currentSong = ALARM_SONGS.find(s => s.id === settings.selectedSong);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-amber-900/95 to-orange-900/95 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4">
-        {/* Main celebration message */}
-        <div className="text-center mb-8 animate-pulse">
-          <div className="text-6xl mb-4">🎉</div>
-          <h1 className="text-4xl font-bold text-amber-100 mb-2">
-            TARGET COMPLETED!
-          </h1>
-          <div className="text-2xl text-amber-200 mb-4">
-            {completedCount} / {targetCount}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-red-500/90 to-red-600/90 backdrop-blur-sm">
+      <div className="w-full max-w-sm mx-4">
+        {/* Bell Icon */}
+        <div className="text-center mb-8">
+          <div className="w-32 h-32 mx-auto mb-6 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+            <Bell className="w-16 h-16 text-white" />
           </div>
-          <p className="text-xl text-amber-300">
-            Om Shanti, Shanti, Shanti
-          </p>
         </div>
 
-        {/* Controls */}
-        <div className="bg-black/30 rounded-xl p-6 backdrop-blur-sm border border-amber-400/30">
-          {/* Header with settings button */}
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-amber-200">Alarm Controls</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowSettings(!showSettings)}
-              className="bg-amber-800/50 text-amber-200 border-amber-600 hover:bg-amber-700/50"
-            >
-              <Settings className="w-4 h-4" />
-            </Button>
+        {/* Main Card */}
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-white mb-2">TARGET COMPLETED!</h1>
+            <p className="text-lg text-white/90">{completedCount} / {targetCount}</p>
+            <p className="text-white/80 mt-2">Om Shanti, Shanti, Shanti</p>
           </div>
-
-          {/* Settings Panel */}
-          {showSettings && (
-            <div className="mb-6 p-4 bg-black/20 rounded-lg border border-amber-500/20">
-              <h4 className="text-amber-200 font-medium mb-4">Alarm Settings</h4>
-              
-              {/* Song Selection */}
-              <div className="mb-4">
-                <label className="text-sm text-amber-300 mb-2 block">Alarm Sound</label>
-                <select
-                  value={settings.selectedSong}
-                  onChange={(e) => updateSettings({ selectedSong: e.target.value })}
-                  className="w-full p-2 rounded bg-amber-900/30 text-amber-100 border border-amber-600/50 focus:border-amber-400"
-                >
-                  {ALARM_SONGS.map(song => (
-                    <option key={song.id} value={song.id}>
-                      {song.name} - {song.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Duration Selection */}
-              <div className="mb-4">
-                <label className="text-sm text-amber-300 mb-2 block">Duration</label>
-                <select
-                  value={settings.duration}
-                  onChange={(e) => updateSettings({ duration: parseInt(e.target.value) })}
-                  className="w-full p-2 rounded bg-amber-900/30 text-amber-100 border border-amber-600/50 focus:border-amber-400"
-                >
-                  {DURATION_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Volume Control */}
-              <div className="mb-4">
-                <label className="text-sm text-amber-300 mb-2 block">
-                  Volume: {Math.round(settings.volume * 100)}%
-                </label>
-                <Slider
-                  value={[settings.volume]}
-                  onValueChange={([value]) => updateSettings({ volume: value })}
-                  max={1}
-                  min={0}
-                  step={0.1}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Toggle Controls */}
-              <div className="flex gap-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateSettings({ audioEnabled: !settings.audioEnabled })}
-                  className={`${
-                    settings.audioEnabled 
-                      ? 'bg-amber-600 text-white border-amber-400' 
-                      : 'bg-zinc-800 text-amber-400 border-zinc-600'
-                  }`}
-                >
-                  {settings.audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                  Audio
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateSettings({ vibrationEnabled: !settings.vibrationEnabled })}
-                  className={`${
-                    settings.vibrationEnabled 
-                      ? 'bg-amber-600 text-white border-amber-400' 
-                      : 'bg-zinc-800 text-amber-400 border-zinc-600'
-                  }`}
-                >
-                  <Smartphone className="w-4 h-4" />
-                  Vibrate
-                </Button>
-              </div>
-            </div>
-          )}
 
           {/* Current Status */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-6 p-3 bg-black/20 rounded-lg">
             <div className="flex items-center justify-center gap-2 mb-2">
-              {isPlaying ? <Play className="w-4 h-4 text-green-400" /> : <Pause className="w-4 h-4 text-amber-400" />}
-              <span className="text-amber-300 text-sm">
-                {isPlaying ? 'Playing' : 'Paused'} - {ALARM_SONGS.find(s => s.id === settings.selectedSong)?.name}
+              {isPlaying ? <Play className="w-4 h-4 text-green-400" /> : <Pause className="w-4 h-4 text-white/60" />}
+              <span className="text-white/90 text-sm">
+                {isPlaying ? 'Playing' : 'Paused'} - {currentSong?.name}
               </span>
             </div>
-            <p className="text-amber-300 text-sm mb-2">Auto-stop in:</p>
-            <p className="text-2xl font-mono text-amber-100">
-              {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-            </p>
+            <p className="text-white/70 text-sm">Auto-stop in: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</p>
           </div>
 
-          {/* Main stop button */}
-          <Button
-            onClick={onStop}
-            className="w-full h-16 text-2xl font-bold bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white mb-4 animate-pulse"
-          >
-            STOP ALARM
-          </Button>
+          {/* Main Actions */}
+          <div className="space-y-3">
+            <Button
+              onClick={onStop}
+              className="w-full h-14 text-xl font-bold bg-red-600 hover:bg-red-700 text-white border-0 rounded-xl"
+            >
+              STOP ALARM
+            </Button>
 
-          {/* Snooze button */}
-          <Button
-            onClick={handleSnooze}
-            variant="outline"
-            className="w-full bg-amber-800/50 text-amber-200 border-amber-600 hover:bg-amber-700/50"
-          >
-            Snooze (1 minute)
-          </Button>
+            <Button
+              onClick={handleSnooze}
+              variant="outline"
+              className="w-full h-12 bg-white/10 text-white border-white/30 hover:bg-white/20 rounded-xl"
+            >
+              Snooze (1 minute)
+            </Button>
+          </div>
         </div>
 
-        {/* Achievement message */}
+        {/* Bottom Message */}
         <div className="text-center mt-6">
-          <p className="text-amber-200">
-            🙏 Congratulations on completing your spiritual practice!
-          </p>
-          <p className="text-amber-300 text-sm mt-2">
-            आपने अपना आध्यात्मिक अभ्यास पूरा किया है!
-          </p>
+          <p className="text-white/90 text-sm">🙏 Congratulations on completing your spiritual practice!</p>
+          <p className="text-white/70 text-xs mt-1">आपने अपना आध्यात्मिक अभ्यास पूरा किया है!</p>
         </div>
       </div>
     </div>
