@@ -15,39 +15,6 @@ export interface StreakData {
 }
 
 /**
- * Reset all user data completely to fix active days bug
- */
-export const resetAllData = async (): Promise<void> => {
-  try {
-    // Clear localStorage
-    localStorage.clear();
-    
-    // Clear IndexedDB activity data
-    const allActivity = await getAllData(STORES.activityData);
-    for (const activity of allActivity) {
-      // Note: We can't delete from IndexedDB easily, so we'll just reset counts
-    }
-    
-    console.log('All user data has been reset completely');
-  } catch (error) {
-    console.error('Failed to reset data:', error);
-  }
-};
-
-/**
- * Get category based on jaap count
- */
-export const getCategoryByJaaps = (jaaps: number): { name: string; icon: string; range: string } => {
-  if (jaaps === 0) return { name: 'Rogi', icon: '⚪', range: '0' };
-  if (jaaps <= 108) return { name: 'Bhogi', icon: '🔥', range: '1-108' };
-  if (jaaps <= 500) return { name: 'Yogi', icon: '🧘', range: '109-500' };
-  if (jaaps <= 1000) return { name: 'Sadhak', icon: '🕉️', range: '501-1000' };
-  if (jaaps <= 1500) return { name: 'Tapasvi', icon: '🔱', range: '1001-1500' };
-  if (jaaps <= 2100) return { name: 'Rishi', icon: '🪷', range: '1501-2100' };
-  return { name: 'Jivanmukta', icon: '💫', range: '2100+' };
-};
-
-/**
  * Record daily activity when user completes jaaps
  */
 export const recordDailyActivity = async (count: number = 1): Promise<void> => {
@@ -65,32 +32,10 @@ export const recordDailyActivity = async (count: number = 1): Promise<void> => {
       timestamp: Date.now()
     };
     
-    await storeData(STORES.activityData, activityData);
+    await storeData(STORES.activityData, activityData, today);
     console.log(`Recorded ${count} jaaps for ${today}. Total today: ${activityData.count}`);
   } catch (error) {
     console.error("Failed to record daily activity:", error);
-  }
-};
-
-/**
- * Sync today's activity with main counter system
- */
-export const syncTodaysActivity = async (): Promise<void> => {
-  try {
-    const todayCount = await getTodayCount();
-    const today = new Date().toISOString().split('T')[0];
-    
-    if (todayCount > 0) {
-      const activityData: DailyActivity = {
-        date: today,
-        count: todayCount,
-        timestamp: Date.now()
-      };
-      await storeData(STORES.activityData, activityData);
-      console.log(`Synced today's activity: ${todayCount} jaaps`);
-    }
-  } catch (error) {
-    console.error("Failed to sync today's activity:", error);
   }
 };
 
@@ -99,9 +44,6 @@ export const syncTodaysActivity = async (): Promise<void> => {
  */
 export const getActivityData = async (): Promise<{[date: string]: number}> => {
   try {
-    // First sync today's data
-    await syncTodaysActivity();
-    
     // Get activity from IndexedDB
     const allActivity = await getAllData(STORES.activityData);
     const activityMap: {[date: string]: number} = {};
@@ -110,41 +52,43 @@ export const getActivityData = async (): Promise<{[date: string]: number}> => {
       activityMap[activity.date] = activity.count;
     });
     
-    console.log(`Retrieved activity data for ${Object.keys(activityMap).length} days`);
+    // Always get today's count from the main counter system and sync it
+    const todayCount = await getTodayCount();
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (todayCount > 0) {
+      activityMap[today] = todayCount;
+      // Sync today's count to activity data
+      await recordDailyActivity(0); // This will update with current count
+      const activityData: DailyActivity = {
+        date: today,
+        count: todayCount,
+        timestamp: Date.now()
+      };
+      await storeData(STORES.activityData, activityData, today);
+    }
+    
     return activityMap;
   } catch (error) {
     console.error("Failed to get activity data:", error);
-    
-    // Fallback: try to get at least today's count
-    try {
-      const todayCount = await getTodayCount();
-      const today = new Date().toISOString().split('T')[0];
-      
-      if (todayCount > 0) {
-        return { [today]: todayCount };
-      }
-    } catch (fallbackError) {
-      console.error("Fallback also failed:", fallbackError);
-    }
-    
     return {};
   }
 };
 
 /**
- * Calculate streak data with proper active days counting
+ * Calculate streak data
  */
 export const getStreakData = async (): Promise<StreakData> => {
   try {
     const activityData = await getActivityData();
-    
-    // Count total active days - any day with jaaps > 0
     const activeDates = Object.keys(activityData).filter(date => activityData[date] > 0).sort();
-    const totalActiveDays = activeDates.length;
     
     if (activeDates.length === 0) {
       return { currentStreak: 0, maxStreak: 0, totalActiveDays: 0 };
     }
+    
+    // Calculate total active days - this should be the count of unique dates with activity > 0
+    const totalActiveDays = activeDates.length;
     
     // Calculate current streak (working backwards from today)
     const today = new Date().toISOString().split('T')[0];
@@ -155,16 +99,16 @@ export const getStreakData = async (): Promise<StreakData> => {
     if (activityData[today] && activityData[today] > 0) {
       currentStreak = 1;
       checkDate.setDate(checkDate.getDate() - 1);
-      
-      // Count consecutive days backwards
-      while (true) {
-        const dateStr = checkDate.toISOString().split('T')[0];
-        if (activityData[dateStr] && activityData[dateStr] > 0) {
-          currentStreak++;
-          checkDate.setDate(checkDate.getDate() - 1);
-        } else {
-          break;
-        }
+    }
+    
+    // Count consecutive days backwards
+    while (true) {
+      const dateStr = checkDate.toISOString().split('T')[0];
+      if (activityData[dateStr] && activityData[dateStr] > 0) {
+        currentStreak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
       }
     }
     
@@ -194,7 +138,7 @@ export const getStreakData = async (): Promise<StreakData> => {
     
     maxStreak = Math.max(maxStreak, tempStreak);
     
-    console.log(`Streak data calculated: current=${currentStreak}, max=${maxStreak}, total=${totalActiveDays}`);
+    console.log(`Streak data: current=${currentStreak}, max=${maxStreak}, total=${totalActiveDays}`);
     
     return {
       currentStreak,
@@ -209,9 +153,6 @@ export const getStreakData = async (): Promise<StreakData> => {
 
 export default {
   recordDailyActivity,
-  syncTodaysActivity,
   getActivityData,
-  getStreakData,
-  resetAllData,
-  getCategoryByJaaps
+  getStreakData
 };
