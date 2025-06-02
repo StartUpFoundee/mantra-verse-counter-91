@@ -3,17 +3,20 @@ import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, LogOut, Settings, Key, Shield } from 'lucide-react';
+import { User, LogOut, Settings, Key, Shield, Bell } from 'lucide-react';
 import { useBulletproofAuth } from '@/hooks/useBulletproofAuth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import ChangePasswordDialog from './ChangePasswordDialog';
+import AlarmSettingsDialog from './AlarmSettingsDialog';
 
 const ProfileDropdown: React.FC = () => {
   const { currentUser, logout } = useBulletproofAuth();
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     try {
       await logout();
       toast.success('Logged out successfully');
@@ -21,6 +24,18 @@ const ProfileDropdown: React.FC = () => {
     } catch (error) {
       toast.error('Failed to logout');
     }
+  };
+
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate('/spiritual-id');
+  };
+
+  const handleAccountSettings = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate('/identity-guide');
   };
 
   const getInitials = (name: string): string => {
@@ -39,42 +54,76 @@ const ProfileDropdown: React.FC = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-white/20 dark:hover:bg-zinc-700/50">
+          <Avatar className="h-10 w-10 border-2 border-white/20 shadow-lg">
             <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-white text-sm font-bold">
               {getInitials(currentUser.name)}
             </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{currentUser.name}</p>
-            <p className="text-xs leading-none text-muted-foreground font-mono">
+      <DropdownMenuContent 
+        className="w-64 bg-white/95 dark:bg-zinc-800/95 backdrop-blur-md border border-gray-200/50 dark:border-zinc-700/50 shadow-xl" 
+        align="end" 
+        forceMount
+        side="bottom"
+        sideOffset={8}
+      >
+        <DropdownMenuLabel className="font-normal p-4">
+          <div className="flex flex-col space-y-2">
+            <p className="text-base font-semibold leading-none text-gray-900 dark:text-white">
+              {currentUser.name}
+            </p>
+            <p className="text-xs leading-none text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-zinc-700 px-2 py-1 rounded">
               {currentUser.id.slice(0, 20)}...
             </p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate('/spiritual-id')}>
-          <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
+        <DropdownMenuSeparator className="bg-gray-200/50 dark:bg-zinc-700/50" />
+        
+        <DropdownMenuItem 
+          onClick={handleProfileClick}
+          className="p-3 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 focus:bg-amber-50 dark:focus:bg-amber-900/20"
+        >
+          <User className="mr-3 h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <span className="text-gray-700 dark:text-gray-200">Profile</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate('/identity-guide')}>
-          <Shield className="mr-2 h-4 w-4" />
-          <span>Account Settings</span>
+        
+        <DropdownMenuItem 
+          onClick={handleAccountSettings}
+          className="p-3 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 focus:bg-amber-50 dark:focus:bg-amber-900/20"
+        >
+          <Shield className="mr-3 h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <span className="text-gray-700 dark:text-gray-200">Account Settings</span>
         </DropdownMenuItem>
+        
+        <AlarmSettingsDialog>
+          <DropdownMenuItem 
+            onSelect={(e) => e.preventDefault()}
+            className="p-3 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 focus:bg-amber-50 dark:focus:bg-amber-900/20"
+          >
+            <Bell className="mr-3 h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-gray-700 dark:text-gray-200">Alarm Settings</span>
+          </DropdownMenuItem>
+        </AlarmSettingsDialog>
+        
         <ChangePasswordDialog>
-          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-            <Key className="mr-2 h-4 w-4" />
-            <span>Change Password</span>
+          <DropdownMenuItem 
+            onSelect={(e) => e.preventDefault()}
+            className="p-3 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 focus:bg-amber-50 dark:focus:bg-amber-900/20"
+          >
+            <Key className="mr-3 h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-gray-700 dark:text-gray-200">Change Password</span>
           </DropdownMenuItem>
         </ChangePasswordDialog>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+        
+        <DropdownMenuSeparator className="bg-gray-200/50 dark:bg-zinc-700/50" />
+        <DropdownMenuItem 
+          onClick={handleLogout}
+          className="p-3 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 focus:bg-red-50 dark:focus:bg-red-900/20"
+        >
+          <LogOut className="mr-3 h-4 w-4 text-red-600 dark:text-red-400" />
+          <span className="text-red-700 dark:text-red-300">Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
