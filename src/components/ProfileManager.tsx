@@ -95,7 +95,9 @@ const ProfileManager: React.FC = () => {
       .slice(0, 2);
   };
 
-  const handleCopyId = async () => {
+  const handleCopyId = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     try {
       await navigator.clipboard.writeText(currentUser.id);
       setCopiedId(true);
@@ -106,7 +108,9 @@ const ProfileManager: React.FC = () => {
     }
   };
 
-  const handleGenerateQR = async () => {
+  const handleGenerateQR = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     try {
       await generateQR(currentUser.slot);
       setShowQRDialog(true);
@@ -133,7 +137,9 @@ const ProfileManager: React.FC = () => {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     try {
       await logout();
       toast.success('Logged out successfully');
@@ -141,6 +147,12 @@ const ProfileManager: React.FC = () => {
     } catch (error) {
       toast.error('Failed to logout');
     }
+  };
+
+  const handleSettingsClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowSettingsDialog(true);
   };
 
   const updateAlarmSettings = (newSettings: Partial<AlarmSettings>) => {
@@ -163,7 +175,7 @@ const ProfileManager: React.FC = () => {
           </Button>
         </DropdownMenuTrigger>
         
-        <DropdownMenuContent className="w-80 p-0" align="end" forceMount>
+        <DropdownMenuContent className="w-80 p-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" align="end" forceMount>
           {/* Profile Header */}
           <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20">
             <div className="flex items-center gap-3">
@@ -226,7 +238,7 @@ const ProfileManager: React.FC = () => {
 
           {/* Settings & Password */}
           <div className="p-2">
-            <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
+            <DropdownMenuItem onClick={handleSettingsClick}>
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </DropdownMenuItem>

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import * as Tone from 'tone';
@@ -33,12 +34,15 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
   targetCount,
   completedCount
 }) => {
-  const [settings, setSettings] = useState<AlarmSettings>({
-    selectedSong: 'temple-bells',
-    duration: 30,
-    volume: 0.7,
-    vibrationEnabled: true,
-    audioEnabled: true
+  const [settings, setSettings] = useState<AlarmSettings>(() => {
+    const saved = localStorage.getItem('alarmSettings');
+    return saved ? JSON.parse(saved) : {
+      selectedSong: 'temple-bells',
+      duration: 30,
+      volume: 0.7,
+      vibrationEnabled: true,
+      audioEnabled: true
+    };
   });
   const [isPlaying, setIsPlaying] = useState(false);
   
@@ -333,40 +337,47 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
   const currentSong = ALARM_SONGS.find(s => s.id === settings.selectedSong);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-red-500/90 to-red-600/90 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-amber-500/95 to-orange-600/95 backdrop-blur-sm">
       <div className="w-full max-w-sm mx-4">
-        {/* Bell Icon */}
-        <div className="text-center mb-8">
-          <div className="w-32 h-32 mx-auto mb-6 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
-            <Bell className="w-16 h-16 text-white" />
+        {/* Bell Icon with Vibrating Ring */}
+        <div className="text-center mb-8 relative">
+          {/* Vibrating Ring Animation */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-40 h-40 border-4 border-white/30 rounded-full animate-ping"></div>
+            <div className="absolute w-36 h-36 border-2 border-white/20 rounded-full animate-pulse"></div>
+            <div className="absolute w-32 h-32 border border-white/10 rounded-full animate-bounce"></div>
+          </div>
+          
+          <div className="relative w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-amber-400/30 to-orange-500/30 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20 shadow-2xl">
+            <Bell className="w-16 h-16 text-white animate-pulse" />
           </div>
         </div>
 
         {/* Main Card */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl">
+        <div className="bg-white/15 backdrop-blur-lg rounded-2xl p-6 border border-white/30 shadow-2xl">
           {/* Header */}
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-white mb-2">TARGET COMPLETED!</h1>
-            <p className="text-lg text-white/90">{completedCount} / {targetCount}</p>
-            <p className="text-white/80 mt-2">Om Shanti, Shanti, Shanti</p>
+            <h1 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">TARGET COMPLETED!</h1>
+            <p className="text-xl text-white/95 font-semibold">{completedCount} / {targetCount}</p>
+            <p className="text-white/90 mt-2 text-lg">Om Shanti, Shanti, Shanti</p>
           </div>
 
           {/* Current Status */}
-          <div className="text-center mb-6 p-3 bg-black/20 rounded-lg">
+          <div className="text-center mb-6 p-4 bg-black/30 rounded-xl border border-white/20">
             <div className="flex items-center justify-center gap-2 mb-2">
-              {isPlaying ? <Play className="w-4 h-4 text-green-400" /> : <Pause className="w-4 h-4 text-white/60" />}
-              <span className="text-white/90 text-sm">
+              {isPlaying ? <Play className="w-5 h-5 text-green-400" /> : <Pause className="w-5 h-5 text-white/60" />}
+              <span className="text-white font-medium">
                 {isPlaying ? 'Playing' : 'Paused'} - {currentSong?.name}
               </span>
             </div>
-            <p className="text-white/70 text-sm">Auto-stop in: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</p>
+            <p className="text-white/80 text-sm">Auto-stop in: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</p>
           </div>
 
           {/* Main Actions */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Button
               onClick={onStop}
-              className="w-full h-14 text-xl font-bold bg-red-600 hover:bg-red-700 text-white border-0 rounded-xl"
+              className="w-full h-14 text-xl font-bold bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-0 rounded-xl shadow-lg transform transition-all hover:scale-105"
             >
               STOP ALARM
             </Button>
@@ -374,7 +385,7 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
             <Button
               onClick={handleSnooze}
               variant="outline"
-              className="w-full h-12 bg-white/10 text-white border-white/30 hover:bg-white/20 rounded-xl"
+              className="w-full h-12 bg-white/20 text-white border-white/40 hover:bg-white/30 rounded-xl backdrop-blur-sm font-semibold"
             >
               Snooze (1 minute)
             </Button>
@@ -383,8 +394,8 @@ const AlarmSystem: React.FC<AlarmSystemProps> = ({
 
         {/* Bottom Message */}
         <div className="text-center mt-6">
-          <p className="text-white/90 text-sm">🙏 Congratulations on completing your spiritual practice!</p>
-          <p className="text-white/70 text-xs mt-1">आपने अपना आध्यात्मिक अभ्यास पूरा किया है!</p>
+          <p className="text-white/95 text-base font-medium drop-shadow-lg">🙏 Congratulations on completing your spiritual practice!</p>
+          <p className="text-white/80 text-sm mt-2">आपने अपना आध्यात्मिक अभ्यास पूरा किया है!</p>
         </div>
       </div>
     </div>
