@@ -100,18 +100,18 @@ export const useBulletproofAuth = () => {
       // Get bulletproof device ID
       const deviceId = await getBulletproofDeviceId();
       
-      // Check for current account
-      const currentAccount = await DeviceAccountManager.getCurrentAccount();
+      // SECURITY FIX: Clear any existing current account session on app initialization
+      // This forces users to go through account selection and password entry every time
+      await DeviceAccountManager.clearCurrentAccount();
       
-      if (currentAccount) {
-        // Set account context for data access
-        AccountDataManager.setCurrentAccount(currentAccount.id);
-        console.log(`Initialized with account context: ${currentAccount.id}`);
-      }
+      // Clear account context to ensure no data access without proper authentication
+      AccountDataManager.clearCurrentAccount();
+      
+      console.log('App initialized - requiring fresh authentication for security');
       
       setAuthState({
-        isAuthenticated: !!currentAccount,
-        currentUser: currentAccount,
+        isAuthenticated: false,
+        currentUser: null,
         isLoading: false,
         deviceId
       });
