@@ -24,14 +24,14 @@ const ProfileDropdown: React.FC = () => {
     }
   };
 
-  const handleProfileClick = (e: React.MouseEvent) => {
+  const handleProfileClick = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
     console.log('Profile clicked, navigating to /spiritual-id');
     navigate('/spiritual-id');
   };
 
-  const handleAccountSettings = (e: React.MouseEvent) => {
+  const handleAccountSettings = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
     console.log('Account settings clicked, navigating to /identity-guide');
