@@ -187,6 +187,27 @@ export class DeviceAccountManager {
   
   static async getCurrentAccount(): Promise<UserAccount | null> {
     try {
+      // Check for persistent session first
+      const persistedAccount = localStorage.getItem('current_authenticated_account');
+      if (persistedAccount) {
+        try {
+          const account = JSON.parse(persistedAccount);
+          const deviceId = await getBulletproofDeviceId();
+          
+          // Verify account belongs to this device
+          if (account.deviceFingerprint === deviceId) {
+            // Set account context for data access
+            AccountDataManager.setCurrentAccount(account.id);
+            console.log(`Restored session for: ${account.name} (${account.id})`);
+            return account;
+          }
+        } catch (e) {
+          // Invalid session data, clear it
+          localStorage.removeItem('current_authenticated_account');
+        }
+      }
+      
+      // Fallback to global manager
       const globalManager = new DataPersistenceManager(1);
       const globalCurrent = await globalManager.getData('globalCurrentAccount');
       

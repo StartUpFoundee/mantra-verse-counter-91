@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { UserAccount, DataPersistenceManager } from '@/utils/advancedIdUtils';
 import { DeviceAccountManager } from '@/utils/deviceAccountManager';
@@ -100,19 +99,26 @@ export const useBulletproofAuth = () => {
       // Get bulletproof device ID
       const deviceId = await getBulletproofDeviceId();
       
-      // For privacy: Clear any existing sessions on fresh app start
-      // This ensures users must always go through account selection
-      await DeviceAccountManager.clearCurrentAccount();
-      AccountDataManager.clearCurrentAccount();
+      // Check if there's a current session (don't clear automatically)
+      const currentAccount = await DeviceAccountManager.getCurrentAccount();
       
-      console.log('App initialized - requiring account selection for privacy');
-      
-      setAuthState({
-        isAuthenticated: false,
-        currentUser: null,
-        isLoading: false,
-        deviceId
-      });
+      if (currentAccount) {
+        console.log('Found existing session for:', currentAccount.name);
+        setAuthState({
+          isAuthenticated: true,
+          currentUser: currentAccount,
+          isLoading: false,
+          deviceId
+        });
+      } else {
+        console.log('No active session found - requiring login');
+        setAuthState({
+          isAuthenticated: false,
+          currentUser: null,
+          isLoading: false,
+          deviceId
+        });
+      }
       
     } catch (error) {
       console.error('Error initializing bulletproof auth:', error);
@@ -154,7 +160,6 @@ export const useBulletproofAuth = () => {
       // Save current session data before logout
       if (currentAccountId) {
         console.log(`Saving session data for account: ${currentAccountId}`);
-        // This will be handled by the DeviceAccountManager.clearCurrentAccount
       }
       
       await DeviceAccountManager.clearCurrentAccount();

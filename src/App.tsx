@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -23,13 +24,15 @@ const AuthenticatedApp: React.FC = () => {
   const { isAuthenticated, currentUser } = useBulletproofAuth();
 
   useEffect(() => {
-    // Only redirect from root path to home, don't interfere with other routes
+    // Only redirect from root path to home when authenticated
+    // Don't interfere with direct navigation to other pages
     if (isAuthenticated && currentUser && location.pathname === '/') {
       console.log('User authenticated, redirecting from root to home');
       navigate('/home', { replace: true });
     }
   }, [isAuthenticated, currentUser, navigate, location.pathname]);
 
+  // If user is not authenticated, show login system
   if (!isAuthenticated) {
     return <IdentitySystem onAuthSuccess={() => {
       console.log('Auth success, navigating to home');
@@ -37,6 +40,7 @@ const AuthenticatedApp: React.FC = () => {
     }} />;
   }
 
+  // User is authenticated, show the app routes
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
@@ -82,7 +86,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-black dark:to-zinc-800">
         <div className="mb-6 text-amber-600 dark:text-amber-400 text-xl font-medium">
-          {!dbInitialized ? 'Initializing database...' : 'Identifying your device...'}
+          {!dbInitialized ? 'Initializing database...' : 'Checking authentication...'}
         </div>
         <div className="relative">
           <div className="w-16 h-16 border-4 border-amber-200 dark:border-amber-800 rounded-full animate-spin"></div>
