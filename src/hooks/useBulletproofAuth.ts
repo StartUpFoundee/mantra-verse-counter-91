@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { UserAccount, DataPersistenceManager } from '@/utils/advancedIdUtils';
 import { DeviceAccountManager } from '@/utils/deviceAccountManager';
@@ -99,23 +100,28 @@ export const useBulletproofAuth = () => {
       // Get bulletproof device ID
       const deviceId = await getBulletproofDeviceId();
       
-      // SECURITY FIX: Always clear any existing sessions on fresh app start
-      // This ensures users must enter password every time they open the website
-      await DeviceAccountManager.clearCurrentAccount();
-      AccountDataManager.clearCurrentAccount();
+      // Check if there's an active session first
+      const currentAccount = await DeviceAccountManager.getCurrentAccount();
       
-      // Clear all session storage to prevent auto-login
-      localStorage.removeItem('current_authenticated_account');
-      sessionStorage.removeItem('current_authenticated_account');
-      
-      console.log('App initialized - requiring password authentication for security');
-      
-      setAuthState({
-        isAuthenticated: false,
-        currentUser: null,
-        isLoading: false,
-        deviceId
-      });
+      if (currentAccount) {
+        // User has an active session, maintain it
+        setAuthState({
+          isAuthenticated: true,
+          currentUser: currentAccount,
+          isLoading: false,
+          deviceId
+        });
+        console.log(`Active session found for: ${currentAccount.name} (${currentAccount.id})`);
+      } else {
+        // No active session found
+        setAuthState({
+          isAuthenticated: false,
+          currentUser: null,
+          isLoading: false,
+          deviceId
+        });
+        console.log('No active session found - requiring login');
+      }
       
     } catch (error) {
       console.error('Error initializing bulletproof auth:', error);
