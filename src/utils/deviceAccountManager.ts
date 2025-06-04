@@ -120,11 +120,11 @@ export class DeviceAccountManager {
     account.lastLogin = new Date().toISOString();
     await manager.storeData('account', account);
     
-    // Set as current account
-    await this.setCurrentAccount(account);
+    // Set as current account - BUT with session-only persistence for security
+    await this.setCurrentAccountSessionOnly(account);
     
     console.log(`Successfully switched to account: ${account.name} (${account.id})`);
-    console.log(`Account context set to: ${account.id}`);
+    console.log(`Account context set to: ${account.id} (session-only for security)`);
     
     return account;
   }
@@ -187,41 +187,29 @@ export class DeviceAccountManager {
   
   static async getCurrentAccount(): Promise<UserAccount | null> {
     try {
-      // Check for persistent session first
-      const persistedAccount = localStorage.getItem('current_authenticated_account');
-      if (persistedAccount) {
+      // SECURITY: Only check session storage for current session
+      // No persistent storage checking for enhanced security
+      const sessionAccount = sessionStorage.getItem('current_authenticated_account');
+      if (sessionAccount) {
         try {
-          const account = JSON.parse(persistedAccount);
+          const account = JSON.parse(sessionAccount);
           const deviceId = await getBulletproofDeviceId();
           
           // Verify account belongs to this device
           if (account.deviceFingerprint === deviceId) {
             // Set account context for data access
             AccountDataManager.setCurrentAccount(account.id);
-            console.log(`Restored session for: ${account.name} (${account.id})`);
+            console.log(`Session-only account restored: ${account.name} (${account.id})`);
             return account;
           }
         } catch (e) {
           // Invalid session data, clear it
-          localStorage.removeItem('current_authenticated_account');
+          sessionStorage.removeItem('current_authenticated_account');
         }
       }
       
-      // Fallback to global manager
-      const globalManager = new DataPersistenceManager(1);
-      const globalCurrent = await globalManager.getData('globalCurrentAccount');
-      
-      if (globalCurrent?.account) {
-        const deviceId = await getBulletproofDeviceId();
-        
-        // Verify account belongs to this device
-        if (globalCurrent.account.deviceFingerprint === deviceId) {
-          // Set account context for data access
-          AccountDataManager.setCurrentAccount(globalCurrent.account.id);
-          return globalCurrent.account;
-        }
-      }
-      
+      // No persistent fallback - user must login with password every time
+      console.log('No active session - password authentication required');
       return null;
     } catch (error) {
       console.error('Error getting current account:', error);
@@ -229,41 +217,44 @@ export class DeviceAccountManager {
     }
   }
   
-  static async setCurrentAccount(account: UserAccount): Promise<void> {
-    const globalManager = new DataPersistenceManager(1);
-    await globalManager.storeData('globalCurrentAccount', { 
-      account, 
-      timestamp: Date.now(),
-      deviceId: await getBulletproofDeviceId()
-    });
-    
+  /**
+   * Set current account with session-only persistence for security
+   */
+  static async setCurrentAccountSessionOnly(account: UserAccount): Promise<void> {
     // Critical: Set account context for data access
     AccountDataManager.setCurrentAccount(account.id);
     
-    // Store in multiple places for bulletproof persistence
-    localStorage.setItem('current_authenticated_account', JSON.stringify(account));
+    // Only store in session storage for current browser session
+    // This gets cleared when browser/tab is closed for security
     sessionStorage.setItem('current_authenticated_account', JSON.stringify(account));
     
-    // Broadcast to other tabs
+    // Broadcast to other tabs in same session
     if ('BroadcastChannel' in window) {
       const channel = new BroadcastChannel('mantra-verse-auth');
       channel.postMessage({ type: 'auth-change', account });
       channel.close();
     }
     
-    console.log(`Set current account: ${account.name} (${account.id})`);
-    console.log(`Account data context: account_${account.id}_*`);
+    console.log(`Set current account (session-only): ${account.name} (${account.id})`);
+    console.log(`Account data context: account_${account.id}_* (session-only)`);
+  }
+  
+  static async setCurrentAccount(account: UserAccount): Promise<void> {
+    // For compatibility, redirect to session-only method for security
+    await this.setCurrentAccountSessionOnly(account);
   }
   
   static async clearCurrentAccount(): Promise<void> {
-    const globalManager = new DataPersistenceManager(1);
-    await globalManager.storeData('globalCurrentAccount', null);
-    
     // Clear account context
     AccountDataManager.clearCurrentAccount();
     
-    localStorage.removeItem('current_authenticated_account');
+    // Clear all session data
     sessionStorage.removeItem('current_authenticated_account');
+    localStorage.removeItem('current_authenticated_account'); // Clear any old persistent data
+    
+    // Clear any old global account data for security
+    const globalManager = new DataPersistenceManager(1);
+    await globalManager.storeData('globalCurrentAccount', null);
     
     // Broadcast to other tabs
     if ('BroadcastChannel' in window) {
@@ -272,7 +263,7 @@ export class DeviceAccountManager {
       channel.close();
     }
     
-    console.log('Cleared current account and data context');
+    console.log('Cleared current account and data context (secure logout)');
   }
   
   /**
